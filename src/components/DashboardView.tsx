@@ -4,13 +4,14 @@ import React, { useEffect, useState } from 'react';
 import { motion } from 'framer-motion';
 import { useAuth } from '@/context/AuthContext';
 import { supabase } from '@/lib/supabase';
+import { Offer, Product } from '@/types';
 import { Star, Gift, TrendingUp, ChevronRight } from 'lucide-react';
 import Image from 'next/image';
 
 export default function DashboardView() {
   const { user } = useAuth();
-  const [offers, setOffers] = useState<any[]>([]);
-  const [featuredProducts, setFeaturedProducts] = useState<any[]>([]);
+  const [offers, setOffers] = useState<Offer[]>([]);
+  const [featuredProducts, setFeaturedProducts] = useState<Product[]>([]);
 
   useEffect(() => {
     const fetchData = async () => {
@@ -29,18 +30,33 @@ export default function DashboardView() {
     <div className="pb-24 pt-6 px-6">
       {/* Header */}
       <motion.div
-        initial={{ opacity: 0, x: -20 }}
-        animate={{ opacity: 1, x: 0 }}
-        className="flex justify-between items-center"
+        initial={{ opacity: 0, y: -10 }}
+        animate={{ opacity: 1, y: 0 }}
+        className="flex items-center justify-between mb-8"
       >
-        <div>
-          <p className="text-muted-foreground font-medium">Hello,</p>
-          <h1 className="text-2xl font-bold">{user?.name} 👋</h1>
+        <div className="h-8">
+          <Image 
+            src="/logo_WT.jpg" 
+            alt="Layani Logo" 
+            width={120}
+            height={32}
+            className="h-full w-auto object-contain"
+          />
         </div>
-        <div className="w-12 h-12 bg-surface rounded-full flex items-center justify-center border border-border">
-          <Star className="text-primary w-6 h-6 fill-primary" />
+        <div className="w-10 h-10 bg-surface rounded-full flex items-center justify-center border border-border shadow-sm">
+          <Star className="text-primary w-5 h-5 fill-primary" />
         </div>
       </motion.div>
+
+      <motion.div
+        initial={{ opacity: 0, x: -20 }}
+        animate={{ opacity: 1, x: 0 }}
+        transition={{ delay: 0.1 }}
+      >
+        <p className="text-muted-foreground font-medium text-sm">Hello,</p>
+        <h1 className="text-2xl font-bold">{user?.name} 👋</h1>
+      </motion.div>
+
 
       {/* Points Card */}
       <motion.div
@@ -99,10 +115,11 @@ export default function DashboardView() {
               transition={{ delay: 0.2 + idx * 0.1 }}
               className="min-w-[280px] h-40 bg-surface rounded-2xl relative overflow-hidden border border-border group"
             >
-              <img
+              <Image
                 src={offer.image_url || 'https://images.unsplash.com/photo-1544787210-2211d4d98342?q=80&w=500'}
                 alt={offer.title}
-                className="absolute inset-0 w-full h-full object-cover transition-transform group-hover:scale-110"
+                fill
+                className="object-cover transition-transform group-hover:scale-110"
               />
               <div className="absolute inset-0 bg-gradient-to-t from-black/80 via-black/20 to-transparent" />
               <div className="absolute bottom-4 left-4 right-4">
@@ -131,9 +148,11 @@ export default function DashboardView() {
               className="bg-white border border-border p-3 rounded-2xl premium-shadow active:scale-95 transition-transform"
             >
               <div className="aspect-square bg-surface rounded-xl overflow-hidden mb-3">
-                <img
+                <Image
                   src={product.image_url}
                   alt={product.name}
+                  width={200}
+                  height={200}
                   className="w-full h-full object-cover"
                 />
               </div>

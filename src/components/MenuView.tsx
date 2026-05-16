@@ -4,15 +4,17 @@ import React, { useEffect, useState } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
 import { supabase } from '@/lib/supabase';
 import { useCart } from '@/context/CartContext';
+import { Product } from '@/types';
 import { Search, Plus, Minus, ShoppingBag } from 'lucide-react';
 import { cn } from '@/lib/utils';
+import Image from 'next/image';
 
 interface MenuViewProps {
   onViewCart: () => void;
 }
 
 export default function MenuView({ onViewCart }: MenuViewProps) {
-  const [products, setProducts] = useState<any[]>([]);
+  const [products, setProducts] = useState<Product[]>([]);
   const [categories, setCategories] = useState<string[]>([]);
   const [selectedCategory, setSelectedCategory] = useState('All');
   const [searchQuery, setSearchQuery] = useState('');
@@ -23,8 +25,8 @@ export default function MenuView({ onViewCart }: MenuViewProps) {
       const { data } = await supabase.from('products').select('*');
       if (data) {
         setProducts(data);
-        const cats = ['All', ...new Set(data.map((p: any) => p.category)) as any];
-        setCategories(cats);
+        const cats = ['All', ...new Set(data.map((p: Product) => p.category))];
+        setCategories(cats as string[]);
       }
     };
     fetchProducts();
@@ -44,7 +46,16 @@ export default function MenuView({ onViewCart }: MenuViewProps) {
     <div className="pb-32 pt-6">
       {/* Header & Search */}
       <div className="px-6 space-y-6">
+      <div className="flex items-center justify-between">
         <h1 className="text-3xl font-bold">Our Menu</h1>
+        <Image 
+          src="/logo_WT.jpg" 
+          alt="Layani Logo" 
+          width={40} 
+          height={40} 
+          className="rounded-xl object-cover border border-border shadow-sm" 
+        />
+      </div>
         <div className="relative">
           <Search className="absolute left-4 top-1/2 -translate-y-1/2 text-muted-foreground w-5 h-5" />
           <input
@@ -90,11 +101,12 @@ export default function MenuView({ onViewCart }: MenuViewProps) {
                 transition={{ delay: idx * 0.05 }}
                 className="flex items-center gap-4 bg-white p-3 rounded-2xl border border-border premium-shadow"
               >
-                <div className="w-24 h-24 bg-surface rounded-xl overflow-hidden flex-shrink-0">
-                  <img
+                <div className="w-24 h-24 bg-surface rounded-xl overflow-hidden flex-shrink-0 relative">
+                  <Image
                     src={product.image_url}
                     alt={product.name}
-                    className="w-full h-full object-cover"
+                    fill
+                    className="object-cover"
                   />
                 </div>
                 <div className="flex-grow">

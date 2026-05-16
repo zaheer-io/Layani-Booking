@@ -6,11 +6,22 @@ import { supabase } from '@/lib/supabase';
 import { useAuth } from '@/context/AuthContext';
 import { Gift, Lock, CheckCircle2, Trophy } from 'lucide-react';
 import { cn } from '@/lib/utils';
+import { Reward } from '@/types';
+import Image from 'next/image';
+
+interface RewardClaim {
+  id: string;
+  user_id: string;
+  reward_id: string;
+  status: 'pending' | 'approved' | 'rejected';
+  created_at: string;
+  rewards: Reward;
+}
 
 export default function RewardsView() {
   const { user, refreshUser } = useAuth();
-  const [rewards, setRewards] = useState<any[]>([]);
-  const [claims, setClaims] = useState<any[]>([]);
+  const [rewards, setRewards] = useState<Reward[]>([]);
+  const [claims, setClaims] = useState<RewardClaim[]>([]);
 
   useEffect(() => {
     const fetchRewards = async () => {
@@ -28,7 +39,7 @@ export default function RewardsView() {
     fetchRewards();
   }, [user]);
 
-  const handleClaim = async (reward: any) => {
+  const handleClaim = async (reward: Reward) => {
     if (!user || user.points < reward.required_points) return;
     
     try {
@@ -56,7 +67,16 @@ export default function RewardsView() {
 
   return (
     <div className="pb-24 pt-6 px-6">
-      <h1 className="text-3xl font-bold">Rewards</h1>
+      <div className="flex items-center justify-between">
+        <h1 className="text-3xl font-bold">Rewards</h1>
+        <Image 
+          src="/logo_WT.jpg" 
+          alt="Layani Logo" 
+          width={40} 
+          height={40} 
+          className="rounded-xl object-cover border border-border shadow-sm" 
+        />
+      </div>
       <p className="text-muted-foreground mt-2">Earn points and unlock exclusive treats.</p>
 
       {/* Points Summary */}

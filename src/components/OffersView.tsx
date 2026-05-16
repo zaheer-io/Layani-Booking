@@ -4,23 +4,34 @@ import React, { useEffect, useState } from 'react';
 import { motion } from 'framer-motion';
 import { supabase } from '@/lib/supabase';
 import { Tag, Sparkles, Clock } from 'lucide-react';
+import { Offer } from '@/types';
+import Image from 'next/image';
 
 export default function OffersView() {
-  const [offers, setOffers] = useState<any[]>([]);
+  const [offers, setOffers] = useState<Offer[]>([]);
 
   useEffect(() => {
     const fetchOffers = async () => {
       const { data } = await supabase.from('offers').select('*');
-      if (data) setOffers(data);
+      if (data) setOffers(data as Offer[]);
     };
     fetchOffers();
   }, []);
 
   return (
     <div className="pb-24 pt-6 px-6">
-      <h1 className="text-3xl font-bold flex items-center gap-2">
-        Special Offers <Sparkles className="w-6 h-6 text-primary fill-primary" />
-      </h1>
+      <div className="flex items-center justify-between">
+        <h1 className="text-3xl font-bold flex items-center gap-2">
+          Special Offers <Sparkles className="w-6 h-6 text-primary fill-primary" />
+        </h1>
+        <Image 
+          src="/logo_WT.jpg" 
+          alt="Layani Logo" 
+          width={40} 
+          height={40} 
+          className="rounded-xl object-cover border border-border shadow-sm" 
+        />
+      </div>
       <p className="text-muted-foreground mt-2">Handpicked deals just for you.</p>
 
       <div className="mt-10 space-y-8">
@@ -32,11 +43,12 @@ export default function OffersView() {
             transition={{ delay: idx * 0.15 }}
             className="group relative"
           >
-            <div className="aspect-[16/9] w-full bg-surface rounded-[2rem] overflow-hidden border border-border shadow-2xl shadow-black/5">
-              <img
+            <div className="aspect-[16/9] w-full bg-surface rounded-[2rem] overflow-hidden border border-border shadow-2xl shadow-black/5 relative">
+              <Image
                 src={offer.image_url}
                 alt={offer.title}
-                className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-700"
+                fill
+                className="object-cover group-hover:scale-105 transition-transform duration-700"
               />
               <div className="absolute inset-0 bg-gradient-to-t from-black/90 via-black/20 to-transparent" />
               

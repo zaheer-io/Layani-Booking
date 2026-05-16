@@ -6,6 +6,7 @@ import { useCart } from '@/context/CartContext';
 import { useAuth } from '@/context/AuthContext';
 import { supabase } from '@/lib/supabase';
 import { Trash2, Plus, Minus, Send, CheckCircle } from 'lucide-react';
+import Image from 'next/image';
 
 interface CartViewProps {
   onSuccess: () => void;
@@ -26,7 +27,7 @@ export default function CartView({ onSuccess }: CartViewProps) {
       // 1. Create Booking
       const { data: booking, error: bookingError } = await supabase
         .from('bookings')
-        .insert([{ user_id: user.id, total, status: 'pending' }])
+        .insert([{ user_id: user.id, total, status: 'pending', notes }])
         .select()
         .single();
 
@@ -90,7 +91,16 @@ export default function CartView({ onSuccess }: CartViewProps) {
 
   return (
     <div className="pb-32 pt-6 px-6">
-      <h1 className="text-3xl font-bold">Your Order</h1>
+      <div className="flex items-center justify-between">
+        <h1 className="text-3xl font-bold">Your Order</h1>
+        <Image 
+          src="/logo_WT.jpg" 
+          alt="Layani Logo" 
+          width={40} 
+          height={40} 
+          className="rounded-xl object-cover border border-border shadow-sm" 
+        />
+      </div>
       <p className="text-muted-foreground mt-2">Review your selected items.</p>
 
       <div className="mt-10 space-y-4">
@@ -103,8 +113,13 @@ export default function CartView({ onSuccess }: CartViewProps) {
               exit={{ opacity: 0, x: 20 }}
               className="flex items-center gap-4 bg-white p-4 rounded-2xl border border-border"
             >
-              <div className="w-16 h-16 bg-surface rounded-xl overflow-hidden flex-shrink-0">
-                <img src={item.image_url} alt={item.name} className="w-full h-full object-cover" />
+              <div className="w-16 h-16 bg-surface rounded-xl overflow-hidden flex-shrink-0 relative">
+                <Image 
+                  src={item.image_url} 
+                  alt={item.name} 
+                  fill
+                  className="object-cover" 
+                />
               </div>
               <div className="flex-grow">
                 <h4 className="font-bold">{item.name}</h4>

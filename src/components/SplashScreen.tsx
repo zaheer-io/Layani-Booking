@@ -1,48 +1,53 @@
 'use client';
 
 import { motion } from 'framer-motion';
+import Image from 'next/image';
 
 export default function SplashScreen() {
   return (
-    <div className="fixed inset-0 bg-white flex flex-col items-center justify-center z-50">
+    <div className="fixed inset-0 bg-[#000000] flex flex-col items-center justify-center z-50">
       <motion.div
-        initial={{ scale: 0.5, opacity: 0 }}
+        initial={{ scale: 0.8, opacity: 0 }}
         animate={{ scale: 1, opacity: 1 }}
-        transition={{ duration: 0.8, ease: "easeOut" }}
+        transition={{ duration: 1.2, ease: [0.22, 1, 0.36, 1] }}
         className="relative"
       >
-        <div className="w-24 h-24 bg-primary rounded-3xl rotate-12 flex items-center justify-center shadow-2xl shadow-primary/40">
-          <span className="text-4xl font-bold text-white -rotate-12">L</span>
+        <div className="w-48 h-48 relative flex items-center justify-center">
+          <Image 
+            src="/logo_DT.png" 
+            alt="Layani Logo" 
+            width={192}
+            height={192}
+            className="object-contain"
+          />
         </div>
-        <motion.div
-          animate={{ rotate: 360 }}
-          transition={{ duration: 2, repeat: Infinity, ease: "linear" }}
-          className="absolute -inset-4 border-2 border-dashed border-primary/30 rounded-full"
-        />
       </motion.div>
       
       <motion.div
         initial={{ y: 20, opacity: 0 }}
         animate={{ y: 0, opacity: 1 }}
-        transition={{ delay: 0.5, duration: 0.8 }}
-        className="mt-8 text-center"
+        transition={{ delay: 0.8, duration: 1 }}
+        className="mt-12 text-center"
       >
-        <h1 className="text-3xl font-bold tracking-tight text-foreground">Layani</h1>
-        <p className="text-muted-foreground mt-2 font-medium">Premium Tea & Snacks</p>
+        <p className="text-white/60 tracking-[0.3em] uppercase text-xs font-semibold">Premium Tea & Snacks</p>
       </motion.div>
 
-      <div className="absolute bottom-12">
-        <div className="flex gap-1">
+      <div className="absolute bottom-16">
+        <div className="flex gap-2">
           {[0, 1, 2].map((i) => (
             <motion.div
               key={i}
-              animate={{ opacity: [0.3, 1, 0.3] }}
-              transition={{ duration: 1.5, repeat: Infinity, delay: i * 0.2 }}
-              className="w-2 h-2 bg-primary rounded-full"
+              animate={{ 
+                opacity: [0.2, 1, 0.2],
+                scale: [1, 1.2, 1]
+              }}
+              transition={{ duration: 2, repeat: Infinity, delay: i * 0.3 }}
+              className="w-1.5 h-1.5 bg-white/40 rounded-full"
             />
           ))}
         </div>
       </div>
     </div>
+
   );
 }

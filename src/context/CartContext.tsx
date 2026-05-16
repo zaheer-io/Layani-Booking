@@ -1,18 +1,11 @@
 'use client';
 
-import React, { createContext, useContext, useState } from 'react';
-
-export interface CartItem {
-  id: string;
-  name: string;
-  price: number;
-  quantity: number;
-  image_url: string;
-}
+import React, { createContext, useContext, useState, useEffect, useCallback, useMemo } from 'react';
+import { Product, CartItem } from '@/types';
 
 interface CartContextType {
   cart: CartItem[];
-  addToCart: (product: any) => void;
+  addToCart: (product: Product) => void;
   removeFromCart: (productId: string) => void;
   updateQuantity: (productId: string, delta: number) => void;
   clearCart: () => void;
@@ -24,7 +17,31 @@ const CartContext = createContext<CartContextType | undefined>(undefined);
 export function CartProvider({ children }: { children: React.ReactNode }) {
   const [cart, setCart] = useState<CartItem[]>([]);
 
-  const addToCart = (product: any) => {
+  useEffect(() => {
+    if (typeof window !== 'undefined') {
+      const savedCart = localStorage.getItem('layani_cart');
+      if (savedCart) {
+        try {
+          // eslint-disable-next-line react-hooks/set-state-in-effect
+          setCart(JSON.parse(savedCart));
+        } catch {
+          console.error('Failed to parse cart');
+        }
+      }
+    }
+  }, []);
+
+  // Save cart whenever it changes, but skip the initial mount to prevent overwriting
+  const isInitialMount = React.useRef(true);
+  useEffect(() => {
+    if (isInitialMount.current) {
+      isInitialMount.current = false;
+      return;
+    }
+    localStorage.setItem('layani_cart', JSON.stringify(cart));
+  }, [cart]);
+
+  const addToCart = useCallback((product: Product) => {
     setCart(prev => {
       const existing = prev.find(item => item.id === product.id);
       if (existing) {
@@ -34,13 +51,13 @@ export function CartProvider({ children }: { children: React.ReactNode }) {
       }
       return [...prev, { ...product, quantity: 1 }];
     });
-  };
+  }, []);
 
-  const removeFromCart = (productId: string) => {
+  const removeFromCart = useCallback((productId: string) => {
     setCart(prev => prev.filter(item => item.id !== productId));
-  };
+  }, []);
 
-  const updateQuantity = (productId: string, delta: number) => {
+  const updateQuantity = useCallback((productId: string, delta: number) => {
     setCart(prev => prev.map(item => {
       if (item.id === productId) {
         const newQty = Math.max(0, item.quantity + delta);
@@ -48,14 +65,23 @@ export function CartProvider({ children }: { children: React.ReactNode }) {
       }
       return item;
     }).filter(item => item.quantity > 0));
-  };
+  }, []);
 
-  const clearCart = () => setCart([]);
+  const clearCart = useCallback(() => setCart([]), []);
 
-  const total = cart.reduce((acc, item) => acc + (item.price * item.quantity), 0);
+  const total = useMemo(() => cart.reduce((acc, item) => acc + (item.price * item.quantity), 0), [cart]);
+
+  const contextValue = useMemo(() => ({ 
+    cart, 
+    addToCart, 
+    removeFromCart, 
+    updateQuantity, 
+    clearCart, 
+    total 
+  }), [cart, addToCart, removeFromCart, updateQuantity, clearCart, total]);
 
   return (
-    <CartContext.Provider value={{ cart, addToCart, removeFromCart, updateQuantity, clearCart, total }}>
+    <CartContext.Provider value={contextValue}>
       {children}
     </CartContext.Provider>
   );

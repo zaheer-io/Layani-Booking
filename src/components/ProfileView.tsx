@@ -1,15 +1,16 @@
 'use client';
 
 import React, { useEffect, useState } from 'react';
-import { motion } from 'framer-motion';
 import { useAuth } from '@/context/AuthContext';
 import { supabase } from '@/lib/supabase';
+import { Booking } from '@/types';
 import { LogOut, History, User, Phone, MapPin, ChevronRight, ShoppingBag } from 'lucide-react';
 import { cn } from '@/lib/utils';
+import Image from 'next/image';
 
 export default function ProfileView() {
   const { user, logout } = useAuth();
-  const [history, setHistory] = useState<any[]>([]);
+  const [history, setHistory] = useState<Booking[]>([]);
 
   useEffect(() => {
     const fetchHistory = async () => {
@@ -26,7 +27,16 @@ export default function ProfileView() {
 
   return (
     <div className="pb-24 pt-6 px-6">
-      <h1 className="text-3xl font-bold">Your Profile</h1>
+      <div className="flex items-center justify-between">
+        <h1 className="text-3xl font-bold">Your Profile</h1>
+        <Image 
+          src="/logo_WT.jpg" 
+          alt="Layani Logo" 
+          width={40} 
+          height={40} 
+          className="rounded-xl object-cover border border-border shadow-sm" 
+        />
+      </div>
 
       {/* User Info Card */}
       <div className="mt-8 bg-white border border-border rounded-3xl p-6 premium-shadow flex flex-col items-center text-center">

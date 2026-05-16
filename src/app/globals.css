@@ -8,9 +8,12 @@
   --color-accent: #fbbf24; /* Amber 400 */
   --color-surface: #fafafa;
   --color-border: #e5e5e5;
+  --color-muted: #f5f5f5;
+  --color-muted-foreground: #737373;
   
   --font-sans: 'Inter', system-ui, -apple-system, sans-serif;
 }
+
 
 @layer base {
   body {

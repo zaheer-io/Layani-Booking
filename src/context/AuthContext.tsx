@@ -2,13 +2,7 @@
 
 import React, { createContext, useContext, useEffect, useState } from 'react';
 import { supabase } from '@/lib/supabase';
-
-interface User {
-  id: string;
-  name: string;
-  phone: string;
-  points: number;
-}
+import { User } from '@/types';
 
 interface AuthContextType {
   user: User | null;
@@ -43,7 +37,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
           } else {
             localStorage.removeItem('layani_user');
           }
-        } catch (e) {
+        } catch {
           localStorage.removeItem('layani_user');
         }
       }
@@ -53,11 +47,11 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     checkSession();
   }, []);
 
-  const login = async (name: string, phone: string) => {
+  const login = React.useCallback(async (name: string, phone: string) => {
     setLoading(true);
     try {
       // Check if user exists
-      let { data: existingUser, error: fetchError } = await supabase
+      const { data: existingUser } = await supabase
         .from('users')
         .select('*')
         .eq('phone', phone)
@@ -84,14 +78,14 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     } finally {
       setLoading(false);
     }
-  };
+  }, []);
 
-  const logout = () => {
+  const logout = React.useCallback(() => {
     setUser(null);
     localStorage.removeItem('layani_user');
-  };
+  }, []);
 
-  const refreshUser = async () => {
+  const refreshUser = React.useCallback(async () => {
     if (!user) return;
     const { data } = await supabase
       .from('users')
@@ -102,10 +96,18 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
       setUser(data);
       localStorage.setItem('layani_user', JSON.stringify(data));
     }
-  };
+  }, [user]);
+
+  const value = React.useMemo(() => ({ 
+    user, 
+    loading, 
+    login, 
+    logout, 
+    refreshUser 
+  }), [user, loading, login, logout, refreshUser]);
 
   return (
-    <AuthContext.Provider value={{ user, loading, login, logout, refreshUser }}>
+    <AuthContext.Provider value={value}>
       {children}
     </AuthContext.Provider>
   );
