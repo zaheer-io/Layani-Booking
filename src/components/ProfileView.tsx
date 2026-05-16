@@ -8,9 +8,12 @@ import { LogOut, History, User, Phone, MapPin, ChevronRight, ShoppingBag } from 
 import { cn } from '@/lib/utils';
 import Image from 'next/image';
 
+import OrderHistoryView from './OrderHistoryView';
+
 export default function ProfileView() {
   const { user, logout } = useAuth();
   const [history, setHistory] = useState<Booking[]>([]);
+  const [showHistory, setShowHistory] = useState(false);
 
   useEffect(() => {
     const fetchHistory = async () => {
@@ -24,6 +27,10 @@ export default function ProfileView() {
     };
     fetchHistory();
   }, [user]);
+
+  if (showHistory) {
+    return <OrderHistoryView onBack={() => setShowHistory(false)} />;
+  }
 
   return (
     <div className="pb-24 pt-6 px-6">
@@ -65,7 +72,10 @@ export default function ProfileView() {
       <div className="mt-10 space-y-4">
         <h3 className="text-xl font-bold">Activity</h3>
         
-        <button className="w-full flex items-center justify-between p-4 bg-white border border-border rounded-2xl active:bg-surface transition-colors">
+        <button 
+          onClick={() => setShowHistory(true)}
+          className="w-full flex items-center justify-between p-4 bg-white border border-border rounded-2xl active:bg-surface transition-colors"
+        >
           <div className="flex items-center gap-4">
             <div className="w-10 h-10 bg-blue-50 text-blue-500 rounded-xl flex items-center justify-center">
               <History className="w-5 h-5" />
@@ -86,10 +96,18 @@ export default function ProfileView() {
         </button>
       </div>
 
-      {/* Recent Orders */}
+      {/* Recent Orders Preview */}
       {history.length > 0 && (
         <div className="mt-10">
-          <h3 className="text-xl font-bold mb-4">Recent Bookings</h3>
+          <div className="flex justify-between items-center mb-4">
+            <h3 className="text-xl font-bold">Recent Bookings</h3>
+            <button 
+              onClick={() => setShowHistory(true)}
+              className="text-primary text-xs font-bold"
+            >
+              See All
+            </button>
+          </div>
           <div className="space-y-3">
             {history.slice(0, 3).map((order) => (
               <div key={order.id} className="p-4 bg-white border border-border rounded-2xl flex justify-between items-center">
@@ -106,7 +124,9 @@ export default function ProfileView() {
                   <p className="font-bold text-sm">₹{order.total}</p>
                   <p className={cn(
                     "text-[10px] font-bold uppercase tracking-tighter",
-                    order.status === 'pending' ? "text-amber-500" : "text-green-500"
+                    order.status === 'pending' ? "text-amber-500" : 
+                    order.status === 'approved' ? "text-blue-500" :
+                    "text-green-500"
                   )}>{order.status}</p>
                 </div>
               </div>
@@ -116,7 +136,7 @@ export default function ProfileView() {
       )}
 
       {/* Logout */}
-      <div className="mt-12">
+      <div className="mt-12 mb-8">
         <button
           onClick={logout}
           className="w-full flex items-center justify-center gap-3 p-5 bg-red-50 text-red-600 rounded-2xl font-bold active:scale-95 transition-all border border-red-100"
@@ -128,3 +148,4 @@ export default function ProfileView() {
     </div>
   );
 }
+
