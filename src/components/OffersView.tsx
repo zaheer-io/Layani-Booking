@@ -16,6 +16,17 @@ export default function OffersView() {
       if (data) setOffers(data as Offer[]);
     };
     fetchOffers();
+
+    const channelOffers = supabase
+      .channel('offers_view')
+      .on('postgres_changes', { event: '*', schema: 'public', table: 'offers' }, () => {
+        fetchOffers();
+      })
+      .subscribe();
+
+    return () => {
+      supabase.removeChannel(channelOffers);
+    };
   }, []);
 
   return (
@@ -35,9 +46,15 @@ export default function OffersView() {
       <p className="text-muted-foreground mt-2">Handpicked deals just for you.</p>
 
       <div className="mt-10 space-y-8">
-        {offers.map((offer, idx) => (
-          <motion.div
-            key={offer.id}
+        {offers.length === 0 ? (
+          <div className="text-center py-16 bg-surface rounded-[2rem] border border-dashed border-border">
+            <Sparkles className="w-12 h-12 text-muted-foreground mx-auto mb-4 opacity-20" />
+            <h3 className="text-xl font-bold">No active offers</h3>
+            <p className="text-muted-foreground mt-2">Check back later for new deals and special promotions!</p>
+          </div>
+        ) : offers.map((offer, idx) => (
+            <motion.div
+              key={offer.id}
             initial={{ opacity: 0, y: 30 }}
             animate={{ opacity: 1, y: 0 }}
             transition={{ delay: idx * 0.15 }}
@@ -45,7 +62,7 @@ export default function OffersView() {
           >
             <div className="aspect-[16/9] w-full bg-surface rounded-[2rem] overflow-hidden border border-border shadow-2xl shadow-black/5 relative">
               <Image
-                src={offer.image_url}
+                src={offer.image_url || ""}
                 alt={offer.title}
                 fill
                 className="object-cover group-hover:scale-105 transition-transform duration-700"

@@ -5,19 +5,21 @@ import { motion, AnimatePresence } from 'framer-motion';
 import { useCart } from '@/context/CartContext';
 import { useAuth } from '@/context/AuthContext';
 import { supabase } from '@/lib/supabase';
-import { Trash2, Plus, Minus, Send, CheckCircle } from 'lucide-react';
+import { Trash2, Plus, Minus, Send, CheckCircle, ChevronLeft } from 'lucide-react';
 import Image from 'next/image';
 
 interface CartViewProps {
   onSuccess: () => void;
+  onBack: () => void;
 }
 
-export default function CartView({ onSuccess }: CartViewProps) {
+export default function CartView({ onSuccess, onBack }: CartViewProps) {
   const { cart, updateQuantity, total, clearCart } = useCart();
   const { user } = useAuth();
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [isSuccess, setIsSuccess] = useState(false);
   const [notes, setNotes] = useState('');
+  const totalPoints = cart.reduce((acc, item) => acc + (item.points || 0) * item.quantity, 0);
 
   const handleBooking = async () => {
     if (!user || cart.length === 0) return;
@@ -92,7 +94,15 @@ export default function CartView({ onSuccess }: CartViewProps) {
   return (
     <div className="pb-32 pt-6 px-6">
       <div className="flex items-center justify-between">
-        <h1 className="text-3xl font-bold">Your Order</h1>
+        <div className="flex items-center gap-4">
+          <button 
+            onClick={onBack}
+            className="w-10 h-10 bg-surface rounded-full flex items-center justify-center border border-border shadow-sm active:scale-90 transition-transform text-foreground"
+          >
+            <ChevronLeft className="w-6 h-6" />
+          </button>
+          <h1 className="text-3xl font-bold">Your Order</h1>
+        </div>
         <Image 
           src="/logo_WT.jpg" 
           alt="Layani Logo" 
@@ -101,7 +111,7 @@ export default function CartView({ onSuccess }: CartViewProps) {
           className="rounded-xl object-cover border border-border shadow-sm" 
         />
       </div>
-      <p className="text-muted-foreground mt-2">Review your selected items.</p>
+      <p className="text-muted-foreground mt-2 ml-14">Review your selected items.</p>
 
       <div className="mt-10 space-y-4">
         <AnimatePresence>
@@ -115,7 +125,7 @@ export default function CartView({ onSuccess }: CartViewProps) {
             >
               <div className="w-16 h-16 bg-surface rounded-xl overflow-hidden flex-shrink-0 relative">
                 <Image 
-                  src={item.image_url} 
+                  src={item.image_url || ""} 
                   alt={item.name} 
                   fill
                   className="object-cover" 
@@ -123,7 +133,14 @@ export default function CartView({ onSuccess }: CartViewProps) {
               </div>
               <div className="flex-grow">
                 <h4 className="font-bold">{item.name}</h4>
-                <p className="text-primary font-bold">₹{item.price}</p>
+                <div className="flex items-center gap-2 mt-0.5">
+                  <p className="text-primary font-bold">₹{item.price}</p>
+                  {item.points && item.points > 0 ? (
+                    <span className="text-[9px] bg-amber-50 text-amber-600 font-bold px-1.5 py-0.5 rounded border border-amber-100/50 flex items-center gap-0.5">
+                      🪙 +{item.points * item.quantity}
+                    </span>
+                  ) : null}
+                </div>
               </div>
               <div className="flex items-center gap-3 bg-surface rounded-xl p-1 border border-border">
                 <button
@@ -164,6 +181,12 @@ export default function CartView({ onSuccess }: CartViewProps) {
           <span>Taxes & Fee</span>
           <span className="font-bold text-green-500">FREE</span>
         </div>
+        {totalPoints > 0 && (
+          <div className="flex justify-between items-center text-amber-600 font-bold bg-amber-50/50 px-3 py-2 rounded-xl border border-amber-100/50">
+            <span className="text-sm">Points to Earn</span>
+            <span className="flex items-center gap-1 font-black">🪙 +{totalPoints}</span>
+          </div>
+        )}
         <div className="pt-4 border-t border-border flex justify-between items-center">
           <span className="text-xl font-bold">Total Amount</span>
           <span className="text-2xl font-bold text-primary">₹{total.toFixed(2)}</span>

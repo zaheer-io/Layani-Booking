@@ -58,7 +58,9 @@ export default function ProfileView() {
         
         <div className="flex gap-4 mt-8 w-full">
           <div className="flex-1 bg-surface rounded-2xl p-4 border border-border">
-            <p className="text-[10px] font-bold text-muted-foreground uppercase tracking-widest">Total Points</p>
+            <p className="text-[10px] font-bold text-muted-foreground uppercase tracking-widest flex items-center justify-center gap-1">
+              <span>🪙</span> Total Points
+            </p>
             <p className="text-xl font-bold text-primary mt-1">{user?.points}</p>
           </div>
           <div className="flex-1 bg-surface rounded-2xl p-4 border border-border">
@@ -85,7 +87,12 @@ export default function ProfileView() {
           <ChevronRight className="w-5 h-5 text-muted-foreground" />
         </button>
 
-        <button className="w-full flex items-center justify-between p-4 bg-white border border-border rounded-2xl active:bg-surface transition-colors">
+        <a 
+          href="https://maps.app.goo.gl/4uhRhY5ehZsYY9Tu7"
+          target="_blank"
+          rel="noopener noreferrer"
+          className="w-full flex items-center justify-between p-4 bg-white border border-border rounded-2xl active:bg-surface transition-colors"
+        >
           <div className="flex items-center gap-4">
             <div className="w-10 h-10 bg-purple-50 text-purple-500 rounded-xl flex items-center justify-center">
               <MapPin className="w-5 h-5" />
@@ -93,7 +100,7 @@ export default function ProfileView() {
             <span className="font-bold">Store Locations</span>
           </div>
           <ChevronRight className="w-5 h-5 text-muted-foreground" />
-        </button>
+        </a>
       </div>
 
       {/* Recent Orders Preview */}

@@ -7,19 +7,27 @@ import { Phone, User, ArrowRight } from 'lucide-react';
 import Image from 'next/image';
 
 export default function LoginScreen() {
+  const [mode, setMode] = useState<'register' | 'login'>('register');
   const [name, setName] = useState('');
   const [phone, setPhone] = useState('');
-  const { login } = useAuth();
+  const { login, setMessage } = useAuth();
   const [isSubmitting, setIsSubmitting] = useState(false);
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
-    if (!name || !phone) return;
+    if ((mode === 'register' && !name) || !phone) return;
     setIsSubmitting(true);
     try {
-      await login(name, phone);
-    } catch {
-      alert('Login failed. Please try again.');
+      const result = await login(mode === 'register' ? name : '', phone, mode);
+      if (mode === 'register' && result.isExisting) {
+        setMessage('User already registered with this number and now logged in.');
+      } else if (mode === 'login') {
+        setMessage('Successfully logged in.');
+      } else {
+        setMessage('Account created successfully!');
+      }
+    } catch (err: any) {
+      alert(err.message || 'Login failed. Please try again.');
     } finally {
       setIsSubmitting(false);
     }
@@ -43,10 +51,12 @@ export default function LoginScreen() {
           />
         </div>
         <h2 className="text-4xl font-bold text-foreground leading-tight text-center">
-          Welcome to <span className="text-primary">Layani</span>
+          {mode === 'register' ? 'Welcome to' : 'Welcome back to'} <span className="text-primary">Layani</span>
         </h2>
         <p className="text-muted-foreground mt-4 text-lg text-center">
-          Join our loyalty program and enjoy premium rewards with every sip.
+          {mode === 'register' 
+            ? 'Join our loyalty program and enjoy premium rewards with every sip.'
+            : 'Log in to access your rewards, offers, and booking history.'}
         </p>
       </motion.div>
 
@@ -58,20 +68,22 @@ export default function LoginScreen() {
         onSubmit={handleSubmit}
         className="mt-12 space-y-6 flex-grow"
       >
-        <div className="space-y-2">
-          <label className="text-sm font-semibold text-muted-foreground ml-1">Your Name</label>
-          <div className="relative">
-            <User className="absolute left-4 top-1/2 -translate-y-1/2 text-muted-foreground w-5 h-5" />
-            <input
-              type="text"
-              placeholder="John Doe"
-              value={name}
-              onChange={(e) => setName(e.target.value)}
-              className="input-field pl-12 h-14"
-              required
-            />
+        {mode === 'register' && (
+          <div className="space-y-2">
+            <label className="text-sm font-semibold text-muted-foreground ml-1">Your Name</label>
+            <div className="relative">
+              <User className="absolute left-4 top-1/2 -translate-y-1/2 text-muted-foreground w-5 h-5" />
+              <input
+                type="text"
+                placeholder="Anjana"
+                value={name}
+                onChange={(e) => setName(e.target.value)}
+                className="input-field pl-12 h-14"
+                required={mode === 'register'}
+              />
+            </div>
           </div>
-        </div>
+        )}
 
         <div className="space-y-2">
           <label className="text-sm font-semibold text-muted-foreground ml-1">Phone Number</label>
@@ -88,14 +100,26 @@ export default function LoginScreen() {
           </div>
         </div>
 
-        <div className="pt-4">
+        <div className="pt-4 space-y-4">
           <button
             type="submit"
             disabled={isSubmitting}
             className="btn-primary w-full h-14 text-lg"
           >
-            {isSubmitting ? 'Joining...' : 'Get Started'}
+            {isSubmitting 
+              ? (mode === 'register' ? 'Joining...' : 'Logging in...') 
+              : (mode === 'register' ? 'Get Started' : 'Log In')}
             {!isSubmitting && <ArrowRight className="w-5 h-5" />}
+          </button>
+          
+          <button
+            type="button"
+            onClick={() => setMode(mode === 'register' ? 'login' : 'register')}
+            className="w-full text-center text-sm font-semibold text-primary hover:underline py-2"
+          >
+            {mode === 'register' 
+              ? 'Already have an account? Log in' 
+              : "Don't have an account? Register"}
           </button>
         </div>
       </motion.form>

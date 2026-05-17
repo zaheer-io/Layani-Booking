@@ -30,6 +30,17 @@ export default function MenuView({ onViewCart }: MenuViewProps) {
       }
     };
     fetchProducts();
+
+    const channelProducts = supabase
+      .channel('menu_products')
+      .on('postgres_changes', { event: '*', schema: 'public', table: 'products' }, () => {
+        fetchProducts();
+      })
+      .subscribe();
+
+    return () => {
+      supabase.removeChannel(channelProducts);
+    };
   }, []);
 
   const filteredProducts = products.filter(p => {
@@ -89,60 +100,83 @@ export default function MenuView({ onViewCart }: MenuViewProps) {
       {/* Product List */}
       <div className="mt-8 px-6 space-y-6">
         <AnimatePresence mode="popLayout">
-          {filteredProducts.map((product, idx) => {
-            const qty = getProductQuantity(product.id);
-            return (
-              <motion.div
-                key={product.id}
-                layout
-                initial={{ opacity: 0, y: 20 }}
-                animate={{ opacity: 1, y: 0 }}
-                exit={{ opacity: 0, scale: 0.9 }}
-                transition={{ delay: idx * 0.05 }}
-                className="flex items-center gap-4 bg-white p-3 rounded-2xl border border-border premium-shadow"
-              >
-                <div className="w-24 h-24 bg-surface rounded-xl overflow-hidden flex-shrink-0 relative">
-                  <Image
-                    src={product.image_url}
-                    alt={product.name}
-                    fill
-                    className="object-cover"
-                  />
-                </div>
-                <div className="flex-grow">
-                  <h3 className="font-bold text-lg">{product.name}</h3>
-                  <p className="text-muted-foreground text-sm">{product.category}</p>
-                  <p className="text-primary font-bold mt-1 text-lg">₹{product.price}</p>
-                </div>
-                <div className="flex flex-col items-center gap-2">
-                  {qty > 0 ? (
-                    <div className="flex flex-col items-center bg-surface rounded-full p-1 border border-border">
-                      <button
-                        onClick={() => updateQuantity(product.id, 1)}
-                        className="p-1.5 bg-primary text-white rounded-full shadow-sm"
-                      >
-                        <Plus className="w-4 h-4" />
-                      </button>
-                      <span className="font-bold text-sm py-1">{qty}</span>
-                      <button
-                        onClick={() => updateQuantity(product.id, -1)}
-                        className="p-1.5 bg-white border border-border rounded-full"
-                      >
-                        <Minus className="w-4 h-4" />
-                      </button>
+          {filteredProducts.length === 0 ? (
+            <motion.div
+              initial={{ opacity: 0, y: 10 }}
+              animate={{ opacity: 1, y: 0 }}
+              className="text-center py-12 px-4 bg-white rounded-3xl border border-border/60 shadow-sm"
+            >
+              <div className="w-16 h-16 bg-surface rounded-full flex items-center justify-center mx-auto mb-4">
+                <Search className="w-8 h-8 text-muted-foreground/60" />
+              </div>
+              <h3 className="font-bold text-lg text-foreground mb-1">No items found</h3>
+              <p className="text-muted-foreground text-sm max-w-[240px] mx-auto">
+                We couldn't find anything matching your search or filter. Try something else!
+              </p>
+            </motion.div>
+          ) : (
+            filteredProducts.map((product, idx) => {
+              const qty = getProductQuantity(product.id);
+              return (
+                <motion.div
+                  key={product.id}
+                  layout
+                  initial={{ opacity: 0, y: 20 }}
+                  animate={{ opacity: 1, y: 0 }}
+                  exit={{ opacity: 0, scale: 0.9 }}
+                  transition={{ delay: idx * 0.05 }}
+                  className="flex items-center gap-4 bg-white p-3 rounded-2xl border border-border premium-shadow"
+                >
+                  <div className="w-24 h-24 bg-surface rounded-xl overflow-hidden flex-shrink-0 relative">
+                    <Image
+                      src={product.image_url || ""}
+                      alt={product.name}
+                      fill
+                      className="object-cover"
+                    />
+                  </div>
+                  <div className="flex-grow">
+                    <h3 className="font-bold text-lg">{product.name}</h3>
+                    <div className="flex items-center gap-2 mt-0.5">
+                      <p className="text-muted-foreground text-sm">{product.category}</p>
+                      {product.points && product.points > 0 ? (
+                        <span className="text-[10px] bg-amber-50 text-amber-600 font-bold px-1.5 py-0.5 rounded-full border border-amber-100/50 flex items-center gap-0.5">
+                          🪙 +{product.points}
+                        </span>
+                      ) : null}
                     </div>
-                  ) : (
-                    <button
-                      onClick={() => addToCart(product)}
-                      className="w-10 h-10 bg-primary text-white rounded-full flex items-center justify-center shadow-lg shadow-primary/20 active:scale-90 transition-transform"
-                    >
-                      <Plus className="w-6 h-6" />
-                    </button>
-                  )}
-                </div>
-              </motion.div>
-            );
-          })}
+                    <p className="text-primary font-bold mt-1 text-lg">₹{product.price}</p>
+                  </div>
+                  <div className="flex flex-col items-center gap-2">
+                    {qty > 0 ? (
+                      <div className="flex flex-col items-center bg-surface rounded-full p-1 border border-border">
+                        <button
+                          onClick={() => updateQuantity(product.id, 1)}
+                          className="p-1.5 bg-primary text-white rounded-full shadow-sm"
+                        >
+                          <Plus className="w-4 h-4" />
+                        </button>
+                        <span className="font-bold text-sm py-1">{qty}</span>
+                        <button
+                          onClick={() => updateQuantity(product.id, -1)}
+                          className="p-1.5 bg-white border border-border rounded-full"
+                        >
+                          <Minus className="w-4 h-4" />
+                        </button>
+                      </div>
+                    ) : (
+                      <button
+                        onClick={() => addToCart(product)}
+                        className="w-10 h-10 bg-primary text-white rounded-full flex items-center justify-center shadow-lg shadow-primary/20 active:scale-90 transition-transform"
+                      >
+                        <Plus className="w-6 h-6" />
+                      </button>
+                    )}
+                  </div>
+                </motion.div>
+              );
+            })
+          )}
         </AnimatePresence>
       </div>
 

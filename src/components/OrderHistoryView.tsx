@@ -41,12 +41,25 @@ export default function OrderHistoryView({ onBack }: OrderHistoryViewProps) {
       if (error) {
         console.error('Error fetching history:', error);
       } else if (data) {
-        setBookings(data as any);
+        setBookings(data as unknown as BookingWithItems[]);
       }
       setLoading(false);
     };
 
     fetchHistory();
+
+    if (!user?.id) return;
+
+    const channel = supabase
+      .channel('history_bookings')
+      .on('postgres_changes', { event: '*', schema: 'public', table: 'bookings', filter: `user_id=eq.${user.id}` }, () => {
+        fetchHistory();
+      })
+      .subscribe();
+
+    return () => {
+      supabase.removeChannel(channel);
+    };
   }, [user]);
 
   const getStatusIcon = (status: string) => {
@@ -83,72 +96,92 @@ export default function OrderHistoryView({ onBack }: OrderHistoryViewProps) {
         </div>
       ) : (
         <div className="space-y-6">
-          {bookings.map((booking) => (
-            <motion.div
-              key={booking.id}
-              initial={{ opacity: 0, y: 10 }}
-              animate={{ opacity: 1, y: 0 }}
-              className="bg-white border border-border rounded-3xl overflow-hidden premium-shadow"
-            >
-              <div className="p-5 border-b border-border bg-surface/50 flex justify-between items-center">
-                <div>
-                  <p className="text-[10px] font-bold text-muted-foreground uppercase tracking-widest">Order ID</p>
-                  <p className="font-bold text-sm">#...{booking.id.slice(-6)}</p>
-                </div>
-                <div className="text-right">
-                  <p className="text-[10px] font-bold text-muted-foreground uppercase tracking-widest">Date</p>
-                  <p className="font-bold text-sm">{new Date(booking.created_at).toLocaleDateString()}</p>
-                </div>
-              </div>
-
-              <div className="p-5 space-y-4">
-                {booking.booking_items?.map((item, idx) => (
-                  <div key={item.id || idx} className="flex justify-between items-center">
-                    <div className="flex items-center gap-3">
-                      <div className="w-10 h-10 bg-surface rounded-lg overflow-hidden relative border border-border">
-                        <Image 
-                          src={item.products?.image_url || '/placeholder.jpg'} 
-                          alt={item.products?.name || 'Product'} 
-                          fill 
-                          className="object-cover"
-                        />
-                      </div>
-                      <div>
-                        <p className="font-bold text-sm">{item.products?.name}</p>
-                        <p className="text-xs text-muted-foreground">Qty: {item.quantity}</p>
-                      </div>
-                    </div>
-                    <p className="font-bold text-sm">₹{item.products?.price * item.quantity}</p>
-                  </div>
-                ))}
-
-                <div className="pt-4 border-t border-border flex justify-between items-end">
+          {bookings.map((booking) => {
+            const totalBookingPoints = booking.booking_items?.reduce(
+              (acc, item) => acc + (item.products?.points || 0) * item.quantity, 
+              0
+            ) || 0;
+            return (
+              <motion.div
+                key={booking.id}
+                initial={{ opacity: 0, y: 10 }}
+                animate={{ opacity: 1, y: 0 }}
+                className="bg-white border border-border rounded-3xl overflow-hidden premium-shadow"
+              >
+                <div className="p-5 border-b border-border bg-surface/50 flex justify-between items-center">
                   <div>
-                    <div className="flex items-center gap-1.5 mb-1">
-                      {getStatusIcon(booking.status)}
-                      <span className={cn(
-                        "text-xs font-bold uppercase tracking-tighter",
-                        booking.status === 'completed' ? "text-green-500" :
-                        booking.status === 'approved' ? "text-blue-500" :
-                        booking.status === 'cancelled' ? "text-red-500" : "text-amber-500"
-                      )}>
-                        {booking.status}
-                      </span>
-                    </div>
-                    {booking.notes && (
-                      <p className="text-[10px] text-muted-foreground italic line-clamp-1 max-w-[150px]">
-                        "{booking.notes}"
-                      </p>
-                    )}
+                    <p className="text-[10px] font-bold text-muted-foreground uppercase tracking-widest">Order ID</p>
+                    <p className="font-bold text-sm">#...{booking.id.slice(-6)}</p>
                   </div>
                   <div className="text-right">
-                    <p className="text-[10px] font-bold text-muted-foreground uppercase tracking-widest">Total Paid</p>
-                    <p className="text-xl font-bold text-primary">₹{booking.total}</p>
+                    <p className="text-[10px] font-bold text-muted-foreground uppercase tracking-widest">Date</p>
+                    <p className="font-bold text-sm">{new Date(booking.created_at).toLocaleDateString()}</p>
                   </div>
                 </div>
-              </div>
-            </motion.div>
-          ))}
+
+                <div className="p-5 space-y-4">
+                  {booking.booking_items?.map((item, idx) => (
+                    <div key={item.id || idx} className="flex justify-between items-center">
+                      <div className="flex items-center gap-3">
+                        <div className="w-10 h-10 bg-surface rounded-lg overflow-hidden relative border border-border">
+                          <Image 
+                            src={item.products?.image_url || '/placeholder.jpg'} 
+                            alt={item.products?.name || 'Product'} 
+                            fill 
+                            className="object-cover"
+                          />
+                        </div>
+                        <div>
+                          <p className="font-bold text-sm">{item.products?.name}</p>
+                          <div className="flex items-center gap-2 mt-0.5">
+                            <span className="text-xs text-muted-foreground">Qty: {item.quantity}</span>
+                            {item.products?.points && item.products.points > 0 ? (
+                              <span className="text-[9px] bg-amber-50 text-amber-600 font-bold px-1.5 py-0.5 rounded border border-amber-100/50 flex items-center gap-0.5">
+                                🪙 +{item.products.points * item.quantity}
+                              </span>
+                            ) : null}
+                          </div>
+                        </div>
+                      </div>
+                      <p className="font-bold text-sm">₹{item.products?.price * item.quantity}</p>
+                    </div>
+                  ))}
+
+                  {totalBookingPoints > 0 && (
+                    <div className="flex justify-between items-center text-xs font-bold text-amber-600 bg-amber-50/40 px-3 py-2 rounded-xl border border-amber-100/50">
+                      <span className="flex items-center gap-1 font-medium">Points to Earn</span>
+                      <span className="flex items-center gap-0.5 font-bold">🪙 +{totalBookingPoints}</span>
+                    </div>
+                  )}
+
+                  <div className="pt-4 border-t border-border flex justify-between items-end">
+                    <div>
+                      <div className="flex items-center gap-1.5 mb-1">
+                        {getStatusIcon(booking.status)}
+                        <span className={cn(
+                          "text-xs font-bold uppercase tracking-tighter",
+                          booking.status === 'completed' ? "text-green-500" :
+                          booking.status === 'approved' ? "text-blue-500" :
+                          booking.status === 'cancelled' ? "text-red-500" : "text-amber-500"
+                        )}>
+                          {booking.status}
+                        </span>
+                      </div>
+                      {booking.notes && (
+                        <p className="text-[10px] text-muted-foreground italic line-clamp-1 max-w-[150px]">
+                          &ldquo;{booking.notes}&rdquo;
+                        </p>
+                      )}
+                    </div>
+                    <div className="text-right">
+                      <p className="text-[10px] font-bold text-muted-foreground uppercase tracking-widest">Total Paid</p>
+                      <p className="text-xl font-bold text-primary">₹{booking.total}</p>
+                    </div>
+                  </div>
+                </div>
+              </motion.div>
+            );
+          })}
         </div>
       )}
     </div>

@@ -94,8 +94,14 @@ export default function RewardsView() {
       {/* Rewards List */}
       <div className="mt-10 space-y-6">
         <h3 className="text-xl font-bold">Unlockable Rewards</h3>
-        {rewards.map((reward, idx) => {
-          const isUnlocked = (user?.points || 0) >= reward.required_points;
+        {rewards.length === 0 ? (
+          <div className="text-center py-16 bg-surface rounded-[2rem] border border-dashed border-border">
+            <Gift className="w-12 h-12 text-muted-foreground mx-auto mb-4 opacity-20" />
+            <h3 className="text-xl font-bold">No rewards available</h3>
+            <p className="text-muted-foreground mt-2">We are brewing some new rewards. Check back soon!</p>
+          </div>
+        ) : rewards.map((reward, idx) => {
+            const isUnlocked = (user?.points || 0) >= reward.required_points;
           const pointsNeeded = reward.required_points - (user?.points || 0);
 
           return (

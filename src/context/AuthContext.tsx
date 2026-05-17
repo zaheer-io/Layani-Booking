@@ -7,7 +7,9 @@ import { User } from '@/types';
 interface AuthContextType {
   user: User | null;
   loading: boolean;
-  login: (name: string, phone: string) => Promise<void>;
+  message: string | null;
+  setMessage: (msg: string | null) => void;
+  login: (name: string, phone: string, mode?: 'login' | 'register') => Promise<{ user: User, isExisting: boolean }>;
   logout: () => void;
   refreshUser: () => Promise<void>;
 }
@@ -17,6 +19,7 @@ const AuthContext = createContext<AuthContextType | undefined>(undefined);
 export function AuthProvider({ children }: { children: React.ReactNode }) {
   const [user, setUser] = useState<User | null>(null);
   const [loading, setLoading] = useState(true);
+  const [message, setMessage] = useState<string | null>(null);
 
   useEffect(() => {
     const checkSession = async () => {
@@ -47,7 +50,27 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     checkSession();
   }, []);
 
-  const login = React.useCallback(async (name: string, phone: string) => {
+  useEffect(() => {
+    if (!user?.id) return;
+    const channel = supabase
+      .channel('public:users')
+      .on(
+        'postgres_changes',
+        { event: '*', schema: 'public', table: 'users', filter: `id=eq.${user.id}` },
+        (payload) => {
+          if (payload.new) {
+            setUser(payload.new as User);
+            localStorage.setItem('layani_user', JSON.stringify(payload.new));
+          }
+        }
+      )
+      .subscribe();
+    return () => {
+      supabase.removeChannel(channel);
+    };
+  }, [user?.id]);
+
+  const login = React.useCallback(async (name: string, phone: string, mode: 'login' | 'register' = 'register') => {
     setLoading(true);
     try {
       // Check if user exists
@@ -60,7 +83,11 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
       if (existingUser) {
         setUser(existingUser);
         localStorage.setItem('layani_user', JSON.stringify(existingUser));
+        return { user: existingUser, isExisting: true };
       } else {
+        if (mode === 'login') {
+          throw new Error('User not found. Please register first.');
+        }
         // Create new user
         const { data: newUser, error: insertError } = await supabase
           .from('users')
@@ -71,6 +98,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
         if (insertError) throw insertError;
         setUser(newUser);
         localStorage.setItem('layani_user', JSON.stringify(newUser));
+        return { user: newUser, isExisting: false };
       }
     } catch (error) {
       console.error('Login error:', error);
@@ -101,10 +129,12 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
   const value = React.useMemo(() => ({ 
     user, 
     loading, 
+    message,
+    setMessage,
     login, 
     logout, 
     refreshUser 
-  }), [user, loading, login, logout, refreshUser]);
+  }), [user, loading, message, setMessage, login, logout, refreshUser]);
 
   return (
     <AuthContext.Provider value={value}>
