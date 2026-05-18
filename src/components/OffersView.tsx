@@ -3,7 +3,7 @@
 import React, { useEffect, useState } from 'react';
 import { motion } from 'framer-motion';
 import { supabase } from '@/lib/supabase';
-import { Tag, Sparkles, Clock } from 'lucide-react';
+import { Sparkles } from 'lucide-react';
 import { Offer } from '@/types';
 import Image from 'next/image';
 
@@ -60,47 +60,59 @@ export default function OffersView() {
             transition={{ delay: idx * 0.15 }}
             className="group relative"
           >
-            <div className="aspect-[16/9] w-full bg-surface rounded-[2rem] overflow-hidden border border-border shadow-2xl shadow-black/5 relative">
-              <Image
-                src={offer.image_url || ""}
-                alt={offer.title}
-                fill
-                className="object-cover group-hover:scale-105 transition-transform duration-700"
-              />
-              <div className="absolute inset-0 bg-gradient-to-t from-black/90 via-black/20 to-transparent" />
-              
-              <div className="absolute top-4 left-4 bg-primary text-white text-[10px] font-black uppercase tracking-widest px-3 py-1.5 rounded-full shadow-lg">
-                Exclusive Deal
+            <div className="relative w-full h-[210px] rounded-[2.5rem] overflow-hidden border border-white/10 bg-black/40 shadow-2xl flex group">
+              {/* Full Bleed Background Image & Overlay */}
+              <div className="absolute inset-0 w-full h-full pointer-events-none select-none">
+                <Image
+                  src={offer.image_url || 'https://images.unsplash.com/photo-1544787210-2211d4d98342?q=80&w=800'}
+                  alt={offer.title}
+                  fill
+                  className="object-cover transition-transform duration-1000 scale-100 group-hover:scale-[1.03]"
+                  priority
+                />
+                <div className="absolute inset-0 bg-gradient-to-r from-black/95 via-black/80 to-black/35" />
               </div>
 
-              <div className="absolute bottom-6 left-6 right-6">
-                <h3 className="text-2xl font-bold text-white leading-tight">{offer.title}</h3>
-                <p className="text-white/70 text-sm mt-2 font-medium">{offer.description}</p>
-                <div className="flex items-center gap-4 mt-4">
-                  <div className="flex items-center gap-1.5 text-xs text-primary font-bold bg-primary/10 backdrop-blur-md px-3 py-1.5 rounded-lg border border-primary/20">
-                    <Clock className="w-3.5 h-3.5" />
-                    Limited Time
-                  </div>
-                  <div className="flex items-center gap-1.5 text-xs text-white/80 font-bold bg-white/10 backdrop-blur-md px-3 py-1.5 rounded-lg border border-white/10">
-                    <Tag className="w-3.5 h-3.5" />
-                    PROMO: LAYANI20
-                  </div>
+              {/* Left Column: Details (68% width) */}
+              <div className="w-[68%] p-6 flex flex-col justify-between relative z-10 text-left h-full">
+                <div>
+                  <span className="px-3 py-1 text-[10px] font-black uppercase tracking-widest text-emerald-300 bg-emerald-500/20 border border-emerald-500/30 rounded-full w-fit mb-3 block select-none backdrop-blur-md">
+                    {offer.discount_percent}% OFF
+                  </span>
+                  <h4 className="text-white font-extrabold text-lg leading-snug line-clamp-2 select-none drop-shadow-md">
+                    {offer.title}
+                  </h4>
+                  <p className="text-white/70 text-xs mt-1.5 leading-relaxed line-clamp-2 select-none">
+                    {offer.description}
+                  </p>
                 </div>
+              </div>
+
+              {/* Voucher Top/Bottom Notches and Separator Line */}
+              <div className="absolute -top-3 right-[32%] w-6 h-6 rounded-full bg-background z-20 shadow-[inset_0_-2px_4px_rgba(0,0,0,0.15)] pointer-events-none" />
+              <div className="absolute -bottom-3 right-[32%] w-6 h-6 rounded-full bg-background z-20 shadow-[inset_0_2px_4px_rgba(0,0,0,0.15)] pointer-events-none" />
+              <div className="absolute top-3 bottom-3 right-[32%] w-[1px] border-r-2 border-dashed border-white/20 z-20 pointer-events-none" />
+
+              {/* Right Column: Stub / Promo code (32% width) */}
+              <div className="w-[32%] relative z-10 h-full flex items-center justify-center pr-4">
+                {offer.code ? (
+                  <div className="flex flex-col items-center justify-center text-center">
+                    <span className="text-[9px] uppercase font-black tracking-widest text-white/50 mb-1.5 select-none font-bold">PROMO CODE</span>
+                    <span className="text-xs font-black tracking-widest text-emerald-300 bg-emerald-500/20 px-3 py-2 rounded-2xl border border-emerald-500/35 backdrop-blur-md shadow-inner select-all max-w-full truncate">
+                      {offer.code}
+                    </span>
+                  </div>
+                ) : (
+                  <div className="flex flex-col items-center justify-center text-center">
+                    <span className="text-[10px] font-black tracking-widest text-emerald-400 select-none bg-emerald-500/10 px-3 py-1.5 rounded-full border border-emerald-500/20 backdrop-blur-sm">
+                      AUTO-APPLIED
+                    </span>
+                  </div>
+                )}
               </div>
             </div>
           </motion.div>
         ))}
-      </div>
-
-      <div className="mt-12 bg-primary/5 border border-primary/10 rounded-[2rem] p-8 text-center border-dashed">
-        <div className="w-16 h-16 bg-primary/10 rounded-full flex items-center justify-center mx-auto mb-4">
-          <Tag className="w-8 h-8 text-primary" />
-        </div>
-        <h3 className="text-xl font-bold">Have a coupon code?</h3>
-        <p className="text-sm text-muted-foreground mt-2 px-6">Apply it during the checkout process to get extra points.</p>
-        <button className="mt-6 text-primary font-bold text-sm uppercase tracking-widest underline decoration-2 underline-offset-8">
-          Browse Active Coupons
-        </button>
       </div>
     </div>
   );

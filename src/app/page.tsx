@@ -52,7 +52,7 @@ export default function Home() {
     switch (activeTab) {
       case 'home': return <DashboardView onViewCart={() => setViewCart(true)} />;
       case 'menu': return <MenuView onViewCart={() => setViewCart(true)} />;
-      case 'rewards': return <RewardsView />;
+      case 'rewards': return <RewardsView onBack={() => setActiveTab('home')} />;
       case 'offers': return <OffersView />;
       case 'profile': return <ProfileView />;
       default: return <DashboardView onViewCart={() => setViewCart(true)} />;

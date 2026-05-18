@@ -20,6 +20,7 @@ export interface User {
   phone: string;
   points: number;
   created_at: string;
+  avatar_url?: string | null;
 }
 
 export interface Booking {

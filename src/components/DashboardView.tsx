@@ -1,13 +1,14 @@
 'use client';
 
 import React, { useEffect, useState } from 'react';
-import { motion, AnimatePresence } from 'framer-motion';
+import { motion, AnimatePresence, Variants } from 'framer-motion';
 import { useAuth } from '@/context/AuthContext';
 import { useCart } from '@/context/CartContext';
 import { supabase } from '@/lib/supabase';
-import { Offer, Product, Booking, BookingItem } from '@/types';
-import { Bell, Gift, TrendingUp, ChevronRight, Plus } from 'lucide-react';
+import { Offer, Product, Booking, BookingItem, Reward } from '@/types';
+import { Bell, Gift, TrendingUp, Plus, X, Coffee, User } from 'lucide-react';
 import Image from 'next/image';
+import { cn } from '@/lib/utils';
 
 interface BookingWithItems extends Booking {
   booking_items: (BookingItem & { products: Product })[];
@@ -19,12 +20,73 @@ interface NotificationItem {
   message: string;
   time: string;
   read: boolean;
+  type?: 'welcome' | 'order' | 'points' | 'promo';
 }
+
+const defaultOffers: Offer[] = [
+  {
+    id: 'default-1',
+    title: 'Monsoon Special Masala Chai ☕',
+    description: 'Buy any 2 Masala Chais & get a traditional Bun Maska absolutely free!',
+    image_url: 'https://images.unsplash.com/photo-1576092768241-dec231879fc3?q=80&w=800',
+    code: 'BUNMASKA',
+    discount_percent: 25,
+    active: true,
+    created_at: new Date().toISOString()
+  },
+  {
+    id: 'default-2',
+    title: 'Chai & Samosa Evening Combo 🥟',
+    description: 'Get 20% off on all samosa combos ordered between 4:00 PM and 7:00 PM.',
+    image_url: 'https://images.unsplash.com/photo-1601050690597-df056fb4ce78?q=80&w=800',
+    code: 'EVENING20',
+    discount_percent: 20,
+    active: true,
+    created_at: new Date().toISOString()
+  },
+  {
+    id: 'default-3',
+    title: 'First Order Sweet Treat 🍰',
+    description: 'Unlock 30% off on premium cookies and pastries with your first booking.',
+    image_url: 'https://images.unsplash.com/photo-1550617931-e17a7b70dce2?q=80&w=800',
+    code: 'FIRSTSWEET',
+    discount_percent: 30,
+    active: true,
+    created_at: new Date().toISOString()
+  }
+];
+
+const slideVariants: Variants = {
+  enter: (direction: number) => ({
+    x: direction > 0 ? '100%' : '-100%',
+    opacity: 0,
+    scale: 0.95
+  }),
+  center: {
+    x: 0,
+    opacity: 1,
+    scale: 1,
+    transition: {
+      x: { type: 'spring', stiffness: 300, damping: 30 },
+      opacity: { duration: 0.25 }
+    }
+  },
+  exit: (direction: number) => ({
+    x: direction < 0 ? '100%' : '-100%',
+    opacity: 0,
+    scale: 0.95,
+    transition: {
+      x: { type: 'spring', stiffness: 300, damping: 30 },
+      opacity: { duration: 0.25 }
+    }
+  })
+};
 
 export default function DashboardView({ onViewCart }: { onViewCart?: () => void }) {
   const { user } = useAuth();
-  const { addToCart, updateQuantity, cart } = useCart();
+  const { addToCart } = useCart();
   const [offers, setOffers] = useState<Offer[]>([]);
+  const [rewards, setRewards] = useState<Reward[]>([]);
   const [featuredProducts, setFeaturedProducts] = useState<Product[]>([]);
   const [activeBookings, setActiveBookings] = useState<BookingWithItems[]>([]);
   const [notifications, setNotifications] = useState<NotificationItem[]>([]);
@@ -35,16 +97,75 @@ export default function DashboardView({ onViewCart }: { onViewCart?: () => void 
     message: ''
   });
 
-  const getProductQuantity = (id: string) => {
-    return cart.find(item => item.id === id)?.quantity || 0;
+  const [activeOfferIdx, setActiveOfferIdx] = useState(0);
+  const [direction, setDirection] = useState(0);
+
+  const getNotificationIcon = (type?: string, title?: string) => {
+    const iconClass = "w-4 h-4";
+    switch (type) {
+      case 'welcome':
+        return (
+          <div className="w-8 h-8 rounded-xl bg-emerald-50 text-emerald-600 flex items-center justify-center border border-emerald-100 flex-shrink-0">
+            <span className="text-sm">👋</span>
+          </div>
+        );
+      case 'points':
+      case 'promo':
+        return (
+          <div className="w-8 h-8 rounded-xl bg-amber-50 text-amber-600 flex items-center justify-center border border-amber-100 flex-shrink-0">
+            <Gift className={iconClass} />
+          </div>
+        );
+      case 'order':
+      default:
+        if (title?.toLowerCase().includes('cancelled') || title?.toLowerCase().includes('cancel')) {
+          return (
+            <div className="w-8 h-8 rounded-xl bg-red-50 text-red-600 flex items-center justify-center border border-red-100 flex-shrink-0">
+              <span className="text-[10px] font-bold">❌</span>
+            </div>
+          );
+        }
+        return (
+          <div className="w-8 h-8 rounded-xl bg-teal-50 text-teal-600 flex items-center justify-center border border-teal-100 flex-shrink-0">
+            <Coffee className={iconClass} />
+          </div>
+        );
+    }
   };
+
+  const deleteNotification = (id: string) => {
+    if (id === 'welcome' && user) {
+      localStorage.setItem(`welcome_dismissed_${user.id}`, 'true');
+    }
+    setNotifications(prev => {
+      const updated = prev.filter(n => n.id !== id);
+      if (user) {
+        localStorage.setItem(`notifications_${user.id}`, JSON.stringify(updated));
+      }
+      return updated;
+    });
+  };
+
+  const activeOffers = offers.length > 0 ? offers : defaultOffers;
+
+  useEffect(() => {
+    if (activeOffers.length <= 1) return;
+    const interval = setInterval(() => {
+      setDirection(1);
+      setActiveOfferIdx((prev) => (prev + 1) % activeOffers.length);
+    }, 6000);
+    return () => clearInterval(interval);
+  }, [activeOffers.length]);
 
   useEffect(() => {
     const fetchData = async () => {
       const { data: offersData } = await supabase.from('offers').select('*').limit(3);
       const { data: productsData } = await supabase.from('products').select('*').limit(4);
+      const { data: rewardsData } = await supabase.from('rewards').select('*').order('required_points', { ascending: true });
+      
       if (offersData) setOffers(offersData);
       if (productsData) setFeaturedProducts(productsData);
+      if (rewardsData) setRewards(rewardsData);
 
       if (user) {
         const { data: activeBookingsData } = await supabase
@@ -85,31 +206,56 @@ export default function DashboardView({ onViewCart }: { onViewCart?: () => void 
       })
       .subscribe();
 
+    const channelRewards = supabase
+      .channel('dashboard_rewards')
+      .on('postgres_changes', { event: '*', schema: 'public', table: 'rewards' }, async () => {
+        const { data } = await supabase.from('rewards').select('*').order('required_points', { ascending: true });
+        if (data) setRewards(data);
+      })
+      .subscribe();
+
     return () => {
       supabase.removeChannel(channelProducts);
       supabase.removeChannel(channelOffers);
+      supabase.removeChannel(channelRewards);
     };
   }, []);
 
   useEffect(() => {
     if (!user) return;
 
+    let timerId: NodeJS.Timeout | undefined;
+
     // Load initial notifications from localstorage
     const stored = localStorage.getItem(`notifications_${user.id}`);
+    const welcomeDismissed = localStorage.getItem(`welcome_dismissed_${user.id}`);
+    
     if (stored) {
-      setNotifications(JSON.parse(stored));
+      timerId = setTimeout(() => {
+        setNotifications(JSON.parse(stored));
+      }, 0);
     } else {
-      const defaultNotif: NotificationItem[] = [
-        {
-          id: 'welcome',
-          title: 'Welcome to Layani! 🌿',
-          message: 'Order fresh chai, earn points, and claim exclusive rewards!',
-          time: new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }),
-          read: false
-        }
-      ];
-      setNotifications(defaultNotif);
-      localStorage.setItem(`notifications_${user.id}`, JSON.stringify(defaultNotif));
+      if (welcomeDismissed === 'true') {
+        timerId = setTimeout(() => {
+          setNotifications([]);
+        }, 0);
+        localStorage.setItem(`notifications_${user.id}`, JSON.stringify([]));
+      } else {
+        const defaultNotif: NotificationItem[] = [
+          {
+            id: 'welcome',
+            title: 'Welcome to Layani! 🌿',
+            message: 'Order fresh chai, earn points, and claim exclusive rewards!',
+            time: new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }),
+            read: false,
+            type: 'welcome'
+          }
+        ];
+        timerId = setTimeout(() => {
+          setNotifications(defaultNotif);
+        }, 0);
+        localStorage.setItem(`notifications_${user.id}`, JSON.stringify(defaultNotif));
+      }
     }
 
     const channel = supabase
@@ -166,10 +312,15 @@ export default function DashboardView({ onViewCart }: { onViewCart?: () => void 
               title,
               message,
               time: new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }),
-              read: false
+              read: false,
+              type: 'order'
             };
 
             setNotifications(prev => {
+              // Safeguard against duplicate notifications from Postgres real-time
+              const exists = prev.some(n => n.id.startsWith(`${booking.id}_${booking.status}`));
+              if (exists) return prev;
+
               const updated = [newNotif, ...prev];
               localStorage.setItem(`notifications_${user.id}`, JSON.stringify(updated));
               return updated;
@@ -186,6 +337,7 @@ export default function DashboardView({ onViewCart }: { onViewCart?: () => void 
       .subscribe();
 
     return () => {
+      if (timerId) clearTimeout(timerId);
       supabase.removeChannel(channel);
     };
   }, [user]);
@@ -221,8 +373,30 @@ export default function DashboardView({ onViewCart }: { onViewCart?: () => void 
     }
   };
 
-  const progress = (user?.points || 0) % 100;
-  const nextReward = 100 - progress;
+  const userPoints = user?.points || 0;
+  
+  // Find next locked reward
+  const nextLocked = rewards.find(r => userPoints < r.required_points);
+  // Find last unlocked reward
+  const lastUnlocked = [...rewards].reverse().find(r => userPoints >= r.required_points);
+
+  let progressPercent = 0;
+  let nextRewardText = '';
+
+  if (rewards.length === 0) {
+    progressPercent = 0;
+    nextRewardText = 'Unlock your first reward soon!';
+  } else if (!nextLocked) {
+    progressPercent = 100;
+    nextRewardText = 'You have unlocked all rewards! 🎉';
+  } else {
+    const minPoints = lastUnlocked ? lastUnlocked.required_points : 0;
+    const maxPoints = nextLocked.required_points;
+    const interval = maxPoints - minPoints;
+    progressPercent = interval > 0 ? Math.round(Math.min(100, Math.max(0, ((userPoints - minPoints) / interval) * 100))) : 0;
+    const pointsNeeded = maxPoints - userPoints;
+    nextRewardText = `Earn ${pointsNeeded} more points for a ${nextLocked.title}!`;
+  }
 
   return (
     <div className="pb-24 pt-6 px-6 relative">
@@ -263,68 +437,111 @@ export default function DashboardView({ onViewCart }: { onViewCart?: () => void 
           <h1 className="text-2xl font-bold text-foreground leading-tight">{user?.name} 👋</h1>
         </div>
         
-        <div className="relative">
-          <button 
-            onClick={() => {
-              setShowNotifications(!showNotifications);
-              if (notifications.some(n => !n.read)) {
-                setNotifications(prev => {
-                  const updated = prev.map(n => ({ ...n, read: true }));
-                  if (user) {
-                    localStorage.setItem(`notifications_${user.id}`, JSON.stringify(updated));
-                  }
-                  return updated;
-                });
-              }
-            }}
-            className="w-10 h-10 bg-surface rounded-full flex items-center justify-center border border-border shadow-sm text-foreground active:scale-95 transition-all relative group"
-          >
-            <Bell className="w-5 h-5 text-muted-foreground group-hover:text-foreground transition-colors" />
-            {notifications.some(n => !n.read) && (
-              <span className="absolute top-2.5 right-2.5 w-2 h-2 bg-primary rounded-full animate-pulse" />
-            )}
-          </button>
-          
-          <AnimatePresence>
-            {showNotifications && (
-              <motion.div
-                initial={{ opacity: 0, y: 10, scale: 0.95 }}
-                animate={{ opacity: 1, y: 0, scale: 1 }}
-                exit={{ opacity: 0, y: 10, scale: 0.95 }}
-                className="absolute right-0 mt-2 w-80 bg-white border border-border rounded-2xl shadow-xl z-50 p-4 max-h-96 overflow-y-auto"
-              >
-                <div className="flex justify-between items-center mb-3 pb-2 border-b border-border">
-                  <h4 className="font-extrabold text-sm">Notifications</h4>
-                  <button 
-                    onClick={() => {
-                      setNotifications([]);
-                      if (user) {
-                        localStorage.removeItem(`notifications_${user.id}`);
-                      }
-                    }}
-                    className="text-[10px] text-muted-foreground hover:text-primary font-bold"
-                  >
-                    Clear All
-                  </button>
-                </div>
-                {notifications.length === 0 ? (
-                  <p className="text-xs text-muted-foreground text-center py-6">No new notifications</p>
-                ) : (
-                  <div className="space-y-3">
-                    {notifications.map(n => (
-                      <div key={n.id} className="text-xs pb-2.5 border-b border-border last:border-0 text-left">
-                        <div className="flex justify-between items-start gap-1">
-                          <span className="font-extrabold text-foreground">{n.title}</span>
-                          <span className="text-[9px] text-muted-foreground font-semibold">{n.time}</span>
-                        </div>
-                        <p className="text-muted-foreground mt-0.5 leading-relaxed">{n.message}</p>
-                      </div>
-                    ))}
+        <div className="flex items-center gap-3">
+          <div className="relative">
+            <button 
+              onClick={() => {
+                setShowNotifications(!showNotifications);
+                if (notifications.some(n => !n.read)) {
+                  setNotifications(prev => {
+                    const updated = prev.map(n => ({ ...n, read: true }));
+                    if (user) {
+                      localStorage.setItem(`notifications_${user.id}`, JSON.stringify(updated));
+                    }
+                    return updated;
+                  });
+                }
+              }}
+              className="w-10 h-10 bg-surface rounded-full flex items-center justify-center border border-border shadow-sm text-foreground active:scale-95 transition-all relative group cursor-pointer"
+            >
+              <Bell className="w-5 h-5 text-muted-foreground group-hover:text-foreground transition-colors" />
+              {notifications.filter(n => !n.read).length > 0 && (
+                <span className="absolute -top-1.5 -right-1.5 bg-primary text-white text-[10px] font-black w-5 h-5 rounded-full flex items-center justify-center border-2 border-white shadow-md animate-pulse">
+                  {notifications.filter(n => !n.read).length}
+                </span>
+              )}
+            </button>
+            
+            <AnimatePresence>
+              {showNotifications && (
+                <motion.div
+                  initial={{ opacity: 0, y: 10, scale: 0.95 }}
+                  animate={{ opacity: 1, y: 0, scale: 1 }}
+                  exit={{ opacity: 0, y: 10, scale: 0.95 }}
+                  className="absolute right-0 mt-2 w-80 bg-white border border-border rounded-2xl shadow-xl z-50 p-4 max-h-96 overflow-y-auto"
+                >
+                  <div className="flex justify-between items-center mb-3 pb-2 border-b border-border">
+                    <h4 className="font-extrabold text-sm">Notifications</h4>
+                    {notifications.length > 0 && (
+                      <button 
+                        onClick={() => {
+                          setNotifications([]);
+                          if (user) {
+                            localStorage.setItem(`notifications_${user.id}`, JSON.stringify([]));
+                            localStorage.setItem(`welcome_dismissed_${user.id}`, 'true');
+                          }
+                        }}
+                        className="text-[10px] text-muted-foreground hover:text-primary font-bold"
+                      >
+                        Clear All
+                      </button>
+                    )}
                   </div>
-                )}
-              </motion.div>
+                  {notifications.length === 0 ? (
+                    <p className="text-xs text-muted-foreground text-center py-6">No new notifications</p>
+                  ) : (
+                    <div className="space-y-2 max-h-[300px] overflow-y-auto pr-1">
+                      {notifications.map(n => (
+                        <motion.div 
+                          key={n.id}
+                          initial={{ opacity: 0, x: -10 }}
+                          animate={{ opacity: 1, x: 0 }}
+                          exit={{ opacity: 0, x: 10 }}
+                          className={cn(
+                            "flex gap-3 p-2.5 rounded-xl transition-all relative group text-left",
+                            n.read ? "bg-white hover:bg-neutral-50" : "bg-emerald-50/40 border-l-2 border-primary hover:bg-emerald-50/60"
+                          )}
+                        >
+                          {getNotificationIcon(n.type, n.title)}
+                          <div className="flex-grow text-xs min-w-0 pr-6">
+                            <div className="flex justify-between items-start gap-1">
+                              <span className="font-extrabold text-foreground truncate">{n.title}</span>
+                              <span className="text-[8px] text-muted-foreground font-semibold flex-shrink-0">{n.time}</span>
+                            </div>
+                            <p className="text-muted-foreground mt-0.5 leading-relaxed break-words">{n.message}</p>
+                          </div>
+                          <button
+                            onClick={(e) => {
+                              e.stopPropagation();
+                              deleteNotification(n.id);
+                            }}
+                            className="absolute right-2 top-1/2 -translate-y-1/2 opacity-0 group-hover:opacity-100 focus:opacity-100 p-1 hover:bg-neutral-100 text-neutral-400 hover:text-neutral-600 rounded-md transition-all duration-200"
+                            title="Dismiss notification"
+                          >
+                            <X className="w-3.5 h-3.5" />
+                          </button>
+                        </motion.div>
+                      ))}
+                    </div>
+                  )}
+                </motion.div>
+              )}
+            </AnimatePresence>
+          </div>
+
+          {/* User Avatar */}
+          <div className="w-10 h-10 rounded-full overflow-hidden border border-border bg-surface flex items-center justify-center shadow-sm">
+            {user?.avatar_url ? (
+              // eslint-disable-next-line @next/next/no-img-element
+              <img 
+                src={user.avatar_url} 
+                alt={user?.name || 'User'} 
+                className="w-full h-full object-cover" 
+              />
+            ) : (
+              <User className="w-5 h-5 text-primary" />
             )}
-          </AnimatePresence>
+          </div>
         </div>
       </motion.div>
 
@@ -383,7 +600,7 @@ export default function DashboardView({ onViewCart }: { onViewCart?: () => void 
         initial={{ opacity: 0, y: 20 }}
         animate={{ opacity: 1, y: 0 }}
         transition={{ delay: 0.1 }}
-        className="bg-primary rounded-3xl p-6 text-white shadow-xl shadow-primary/20 relative overflow-hidden"
+        className="bg-gradient-to-br from-emerald-600 to-teal-800 rounded-3xl p-6 text-white shadow-xl shadow-emerald-950/20 relative overflow-hidden"
       >
         <div className="relative z-10 text-left">
           <div className="flex justify-between items-start">
@@ -397,18 +614,18 @@ export default function DashboardView({ onViewCart }: { onViewCart?: () => void 
           <div className="mt-8">
             <div className="flex justify-between text-xs font-bold mb-2">
               <span>Next Reward Progress</span>
-              <span>{progress}%</span>
+              <span>{progressPercent}%</span>
             </div>
-            <div className="h-2 bg-white/20 rounded-full overflow-hidden">
+            <div className="h-2 bg-white/15 rounded-full overflow-hidden border border-white/5 backdrop-blur-sm">
               <motion.div
                 initial={{ width: 0 }}
-                animate={{ width: `${progress}%` }}
+                animate={{ width: `${progressPercent}%` }}
                 transition={{ duration: 1, ease: "easeOut" }}
-                className="h-full bg-white rounded-full shadow-[0_0_10px_rgba(255,255,255,0.5)]"
+                className="h-full bg-white rounded-full shadow-[0_0_8px_rgba(255,255,255,0.65)]"
               />
             </div>
-            <p className="text-[10px] mt-2 text-white/70 italic">
-              * Earn {nextReward} more points for a free tea!
+            <p className="text-[10.5px] mt-2.5 text-emerald-100/90 font-medium">
+              ✨ {nextRewardText}
             </p>
           </div>
         </div>
@@ -418,35 +635,97 @@ export default function DashboardView({ onViewCart }: { onViewCart?: () => void 
         <div className="absolute -left-10 -bottom-10 w-32 h-32 bg-black/5 rounded-full blur-xl" />
       </motion.div>
 
-      {/* Offers Slider */}
+      {/* Offers Slider / Interactive Carousel */}
       <div className="mt-10">
         <div className="flex justify-between items-center mb-4">
-          <h3 className="text-lg font-bold">Featured Offers</h3>
-          <button className="text-primary text-sm font-semibold flex items-center">
-            View All <ChevronRight className="w-4 h-4" />
-          </button>
+          <div>
+            <h3 className="text-lg font-extrabold text-foreground tracking-tight">Special Offers & Promos</h3>
+            <p className="text-muted-foreground text-xs mt-0.5">Premium deals curated just for you</p>
+          </div>
         </div>
-        <div className="flex gap-4 overflow-x-auto pb-4 -mx-2 px-2 scrollbar-hide">
-          {offers.map((offer, idx) => (
+
+        {/* Carousel Outer Wrapper - Glassmorphic / Vignette Card */}
+        <div className="relative w-full h-[210px] rounded-[2.5rem] overflow-hidden border border-white/10 bg-black/40 shadow-2xl flex group">
+          <AnimatePresence initial={false} custom={direction} mode="wait">
             <motion.div
-              key={offer.id}
-              initial={{ opacity: 0, scale: 0.9 }}
-              animate={{ opacity: 1, scale: 1 }}
-              transition={{ delay: 0.2 + idx * 0.1 }}
-              className="min-w-[280px] h-40 bg-surface rounded-2xl relative overflow-hidden border border-border group"
+              key={activeOfferIdx}
+              custom={direction}
+              variants={slideVariants}
+              initial="enter"
+              animate="center"
+              exit="exit"
+              className="absolute inset-0 w-full h-full flex"
             >
-              <Image
-                src={offer.image_url || 'https://images.unsplash.com/photo-1544787210-2211d4d98342?q=80&w=500'}
-                alt={offer.title}
-                fill
-                className="object-cover transition-transform group-hover:scale-110"
-              />
-              <div className="absolute inset-0 bg-gradient-to-t from-black/80 via-black/20 to-transparent" />
-              <div className="absolute bottom-4 left-4 right-4 text-left">
-                <h4 className="text-white font-bold text-lg leading-tight">{offer.title}</h4>
-                <p className="text-white/80 text-xs mt-1 line-clamp-1">{offer.description}</p>
+              {/* Full Bleed Background Image & Overlay */}
+              <div className="absolute inset-0 w-full h-full pointer-events-none select-none">
+                <Image
+                  src={activeOffers[activeOfferIdx].image_url || 'https://images.unsplash.com/photo-1544787210-2211d4d98342?q=80&w=800'}
+                  alt={activeOffers[activeOfferIdx].title}
+                  fill
+                  className="object-cover transition-transform duration-1000 scale-100 group-hover:scale-[1.03]"
+                  priority
+                />
+                <div className="absolute inset-0 bg-gradient-to-r from-black/95 via-black/80 to-black/35" />
+              </div>
+
+              {/* Left Column: Details (68% width) */}
+              <div className="w-[68%] p-6 flex flex-col justify-between relative z-10 text-left h-full">
+                <div>
+                  <span className="px-3 py-1 text-[10px] font-black uppercase tracking-widest text-emerald-300 bg-emerald-500/20 border border-emerald-500/30 rounded-full w-fit mb-3 block select-none backdrop-blur-md">
+                    {activeOffers[activeOfferIdx].discount_percent}% OFF
+                  </span>
+                  <h4 className="text-white font-extrabold text-lg leading-snug line-clamp-2 select-none drop-shadow-md">
+                    {activeOffers[activeOfferIdx].title}
+                  </h4>
+                  <p className="text-white/70 text-xs mt-1.5 leading-relaxed line-clamp-2 select-none">
+                    {activeOffers[activeOfferIdx].description}
+                  </p>
+                </div>
+              </div>
+
+              {/* Voucher Top/Bottom Notches and Separator Line */}
+              <div className="absolute -top-3 right-[32%] w-6 h-6 rounded-full bg-background z-20 shadow-[inset_0_-2px_4px_rgba(0,0,0,0.15)] pointer-events-none" />
+              <div className="absolute -bottom-3 right-[32%] w-6 h-6 rounded-full bg-background z-20 shadow-[inset_0_2px_4px_rgba(0,0,0,0.15)] pointer-events-none" />
+              <div className="absolute top-3 bottom-3 right-[32%] w-[1px] border-r-2 border-dashed border-white/20 z-20 pointer-events-none" />
+
+              {/* Right Column: Stub / Promo code (32% width) */}
+              <div className="w-[32%] relative z-10 h-full flex items-center justify-center pr-4">
+                {activeOffers[activeOfferIdx].code ? (
+                  <div className="flex flex-col items-center justify-center text-center">
+                    <span className="text-[9px] uppercase font-black tracking-widest text-white/50 mb-1.5 select-none font-bold">PROMO CODE</span>
+                    <span className="text-xs font-black tracking-widest text-emerald-300 bg-emerald-500/20 px-3 py-2 rounded-2xl border border-emerald-500/35 backdrop-blur-md shadow-inner select-all max-w-full truncate">
+                      {activeOffers[activeOfferIdx].code}
+                    </span>
+                  </div>
+                ) : (
+                  <div className="flex flex-col items-center justify-center text-center">
+                    <span className="text-[10px] font-black tracking-widest text-emerald-400 select-none bg-emerald-500/10 px-3 py-1.5 rounded-full border border-emerald-500/20 backdrop-blur-sm">
+                      AUTO-APPLIED
+                    </span>
+                  </div>
+                )}
               </div>
             </motion.div>
+          </AnimatePresence>
+        </div>
+
+        {/* Carousel Pagination Dots */}
+        <div className="flex justify-center gap-2 mt-4">
+          {activeOffers.map((_, i) => (
+            <button
+              key={i}
+              onClick={() => {
+                setDirection(i > activeOfferIdx ? 1 : -1);
+                setActiveOfferIdx(i);
+              }}
+              className={cn(
+                "h-2.5 rounded-full transition-all duration-300",
+                i === activeOfferIdx
+                  ? "bg-primary w-6"
+                  : "bg-muted-foreground/30 hover:bg-muted-foreground/50 w-2.5"
+              )}
+              aria-label={`Go to slide ${i + 1}`}
+            />
           ))}
         </div>
       </div>

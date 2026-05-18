@@ -111,7 +111,7 @@ export default function MenuView({ onViewCart }: MenuViewProps) {
               </div>
               <h3 className="font-bold text-lg text-foreground mb-1">No items found</h3>
               <p className="text-muted-foreground text-sm max-w-[240px] mx-auto">
-                We couldn't find anything matching your search or filter. Try something else!
+                We couldn&apos;t find anything matching your search or filter. Try something else!
               </p>
             </motion.div>
           ) : (

@@ -26,8 +26,8 @@ export default function LoginScreen() {
       } else {
         setMessage('Account created successfully!');
       }
-    } catch (err: any) {
-      alert(err.message || 'Login failed. Please try again.');
+    } catch (err) {
+      alert(err instanceof Error ? err.message : 'Login failed. Please try again.');
     } finally {
       setIsSubmitting(false);
     }
