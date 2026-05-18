@@ -291,20 +291,21 @@ export default function DashboardView({ onViewCart }: { onViewCart?: () => void 
           // If UPDATE or INSERT event, add notification
           if (payload.eventType === 'UPDATE' || payload.eventType === 'INSERT') {
             const booking = payload.new as Booking;
+            const ordId = `ORD-${booking.id.slice(-6).toUpperCase()}`;
             let title = 'Order Update';
-            let message = `Your order status is now ${booking.status}.`;
+            let message = `Your order ${ordId} status is now ${booking.status}.`;
             if (booking.status === 'approved') {
               title = 'Order Approved! 🍵';
-              message = 'Our kitchen is now preparing your delicious tea.';
+              message = `Our kitchen is now preparing your order ${ordId}.`;
             } else if (booking.status === 'completed') {
               title = 'Order Completed! 🎉';
-              message = 'Your order is ready. Thank you for booking with Layani!';
+              message = `Your order ${ordId} is ready. Thank you for booking with Layani!`;
             } else if (booking.status === 'cancelled') {
               title = 'Order Cancelled ❌';
-              message = 'Your order has been cancelled.';
+              message = `Your order ${ordId} has been cancelled.`;
             } else if (payload.eventType === 'INSERT') {
               title = 'Order Placed! 🛒';
-              message = 'We have received your order and it is pending approval.';
+              message = `We have received your order ${ordId} and it is pending approval.`;
             }
 
             const newNotif: NotificationItem = {
@@ -562,7 +563,7 @@ export default function DashboardView({ onViewCart }: { onViewCart?: () => void 
               </span>
               <span className="text-[10px] font-bold text-emerald-600 uppercase tracking-widest">Live Order Tracker</span>
             </div>
-            <span className="text-[10px] font-medium text-muted-foreground">#{activeBookings[0].id.slice(-6).toUpperCase()}</span>
+            <span className="text-[10px] font-medium text-muted-foreground">ORD-{activeBookings[0].id.slice(-6).toUpperCase()}</span>
           </div>
 
           <h3 className="font-extrabold text-foreground text-base text-left">

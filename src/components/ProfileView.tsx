@@ -233,7 +233,7 @@ export default function ProfileView() {
                     <ShoppingBag className="w-5 h-5 text-muted-foreground" />
                   </div>
                   <div className="text-left">
-                    <p className="font-bold text-sm text-foreground">Order #...{order.id.slice(-4)}</p>
+                    <p className="font-bold text-sm text-foreground">Order ORD-{order.id.slice(-6).toUpperCase()}</p>
                     <p className="text-[10px] font-bold text-muted-foreground">{new Date(order.created_at).toLocaleDateString()}</p>
                   </div>
                 </div>

@@ -111,7 +111,7 @@ export default function OrderHistoryView({ onBack }: OrderHistoryViewProps) {
                 <div className="p-5 border-b border-border bg-surface/50 flex justify-between items-center">
                   <div>
                     <p className="text-[10px] font-bold text-muted-foreground uppercase tracking-widest">Order ID</p>
-                    <p className="font-bold text-sm">#...{booking.id.slice(-6)}</p>
+                    <p className="font-bold text-sm">ORD-{booking.id.slice(-6).toUpperCase()}</p>
                   </div>
                   <div className="text-right">
                     <p className="text-[10px] font-bold text-muted-foreground uppercase tracking-widest">Date</p>
