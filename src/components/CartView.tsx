@@ -4,6 +4,7 @@ import React, { useState } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
 import { useCart } from '@/context/CartContext';
 import { useAuth } from '@/context/AuthContext';
+import { useAlert } from '@/context/AlertContext';
 import { supabase } from '@/lib/supabase';
 import { Trash2, Plus, Minus, Send, CheckCircle, ChevronLeft } from 'lucide-react';
 import Image from 'next/image';
@@ -16,6 +17,7 @@ interface CartViewProps {
 export default function CartView({ onSuccess, onBack }: CartViewProps) {
   const { cart, updateQuantity, total, clearCart } = useCart();
   const { user } = useAuth();
+  const { showAlert } = useAlert();
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [isSuccess, setIsSuccess] = useState(false);
   const [notes, setNotes] = useState('');
@@ -55,7 +57,7 @@ export default function CartView({ onSuccess, onBack }: CartViewProps) {
       }, 3000);
     } catch (error) {
       console.error('Booking error:', error);
-      alert('Failed to place booking. Please try again.');
+      showAlert('Booking Failed', 'Failed to place booking. Please try again.', 'error');
     } finally {
       setIsSubmitting(false);
     }
@@ -85,7 +87,7 @@ export default function CartView({ onSuccess, onBack }: CartViewProps) {
         <div className="w-20 h-20 bg-surface rounded-full flex items-center justify-center text-muted-foreground mb-6">
           <Trash2 className="w-10 h-10" />
         </div>
-        <h2 className="text-2xl font-bold">Your cart is empty</h2>
+        <h2 className="text-2xl font-bold">Your plate is empty</h2>
         <p className="text-muted-foreground mt-2">Go to the menu and add some treats!</p>
       </div>
     );

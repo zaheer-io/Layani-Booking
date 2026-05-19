@@ -61,7 +61,7 @@ export interface RewardClaim {
   id: string;
   user_id: string;
   reward_id: string;
-  status: 'pending' | 'approved' | 'completed' | 'rejected';
+  status: 'pending' | 'approved' | 'completed' | 'rejected' | 'refunded' | 'refund';
   created_at: string;
 }
 

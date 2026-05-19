@@ -3,6 +3,7 @@
 import React, { useState } from 'react';
 import { motion } from 'framer-motion';
 import { useAuth } from '@/context/AuthContext';
+import { useAlert } from '@/context/AlertContext';
 import { Phone, User, ArrowRight } from 'lucide-react';
 import Image from 'next/image';
 
@@ -11,6 +12,7 @@ export default function LoginScreen() {
   const [name, setName] = useState('');
   const [phone, setPhone] = useState('');
   const { login, setMessage } = useAuth();
+  const { showAlert } = useAlert();
   const [isSubmitting, setIsSubmitting] = useState(false);
 
   const handleSubmit = async (e: React.FormEvent) => {
@@ -27,7 +29,11 @@ export default function LoginScreen() {
         setMessage('Account created successfully!');
       }
     } catch (err) {
-      alert(err instanceof Error ? err.message : 'Login failed. Please try again.');
+      showAlert(
+        mode === 'register' ? 'Registration Failed' : 'Login Failed',
+        err instanceof Error ? err.message : 'Please check your connection and try again.',
+        'error'
+      );
     } finally {
       setIsSubmitting(false);
     }

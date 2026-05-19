@@ -23,39 +23,6 @@ interface NotificationItem {
   type?: 'welcome' | 'order' | 'points' | 'promo';
 }
 
-const defaultOffers: Offer[] = [
-  {
-    id: 'default-1',
-    title: 'Monsoon Special Masala Chai ☕',
-    description: 'Buy any 2 Masala Chais & get a traditional Bun Maska absolutely free!',
-    image_url: 'https://images.unsplash.com/photo-1576092768241-dec231879fc3?q=80&w=800',
-    code: 'BUNMASKA',
-    discount_percent: 25,
-    active: true,
-    created_at: new Date().toISOString()
-  },
-  {
-    id: 'default-2',
-    title: 'Chai & Samosa Evening Combo 🥟',
-    description: 'Get 20% off on all samosa combos ordered between 4:00 PM and 7:00 PM.',
-    image_url: 'https://images.unsplash.com/photo-1601050690597-df056fb4ce78?q=80&w=800',
-    code: 'EVENING20',
-    discount_percent: 20,
-    active: true,
-    created_at: new Date().toISOString()
-  },
-  {
-    id: 'default-3',
-    title: 'First Order Sweet Treat 🍰',
-    description: 'Unlock 30% off on premium cookies and pastries with your first booking.',
-    image_url: 'https://images.unsplash.com/photo-1550617931-e17a7b70dce2?q=80&w=800',
-    code: 'FIRSTSWEET',
-    discount_percent: 30,
-    active: true,
-    created_at: new Date().toISOString()
-  }
-];
-
 const slideVariants: Variants = {
   enter: (direction: number) => ({
     x: direction > 0 ? '100%' : '-100%',
@@ -146,7 +113,7 @@ export default function DashboardView({ onViewCart }: { onViewCart?: () => void 
     });
   };
 
-  const activeOffers = offers.length > 0 ? offers : defaultOffers;
+  const activeOffers = offers;
 
   useEffect(() => {
     if (activeOffers.length <= 1) return;
@@ -391,10 +358,8 @@ export default function DashboardView({ onViewCart }: { onViewCart?: () => void 
     progressPercent = 100;
     nextRewardText = 'You have unlocked all rewards! 🎉';
   } else {
-    const minPoints = lastUnlocked ? lastUnlocked.required_points : 0;
     const maxPoints = nextLocked.required_points;
-    const interval = maxPoints - minPoints;
-    progressPercent = interval > 0 ? Math.round(Math.min(100, Math.max(0, ((userPoints - minPoints) / interval) * 100))) : 0;
+    progressPercent = Math.round(Math.min(100, Math.max(0, (userPoints / maxPoints) * 100)));
     const pointsNeeded = maxPoints - userPoints;
     nextRewardText = `Earn ${pointsNeeded} more points for a ${nextLocked.title}!`;
   }
@@ -637,99 +602,103 @@ export default function DashboardView({ onViewCart }: { onViewCart?: () => void 
       </motion.div>
 
       {/* Offers Slider / Interactive Carousel */}
-      <div className="mt-10">
-        <div className="flex justify-between items-center mb-4">
-          <div>
-            <h3 className="text-lg font-extrabold text-foreground tracking-tight">Special Offers & Promos</h3>
-            <p className="text-muted-foreground text-xs mt-0.5">Premium deals curated just for you</p>
+      {activeOffers.length > 0 && (
+        <div className="mt-10">
+          <div className="flex justify-between items-center mb-4">
+            <div>
+              <h3 className="text-lg font-extrabold text-foreground tracking-tight">Special Offers & Promos</h3>
+              <p className="text-muted-foreground text-xs mt-0.5">Premium deals curated just for you</p>
+            </div>
           </div>
-        </div>
 
-        {/* Carousel Outer Wrapper - Glassmorphic / Vignette Card */}
-        <div className="relative w-full h-[210px] rounded-[2.5rem] overflow-hidden border border-white/10 bg-black/40 shadow-2xl flex group">
-          <AnimatePresence initial={false} custom={direction} mode="wait">
-            <motion.div
-              key={activeOfferIdx}
-              custom={direction}
-              variants={slideVariants}
-              initial="enter"
-              animate="center"
-              exit="exit"
-              className="absolute inset-0 w-full h-full flex"
-            >
-              {/* Full Bleed Background Image & Overlay */}
-              <div className="absolute inset-0 w-full h-full pointer-events-none select-none">
-                <Image
-                  src={activeOffers[activeOfferIdx].image_url || 'https://images.unsplash.com/photo-1544787210-2211d4d98342?q=80&w=800'}
-                  alt={activeOffers[activeOfferIdx].title}
-                  fill
-                  className="object-cover transition-transform duration-1000 scale-100 group-hover:scale-[1.03]"
-                  priority
-                />
-                <div className="absolute inset-0 bg-gradient-to-r from-black/95 via-black/80 to-black/35" />
-              </div>
-
-              {/* Left Column: Details (68% width) */}
-              <div className="w-[68%] p-6 flex flex-col justify-between relative z-10 text-left h-full">
-                <div>
-                  <span className="px-3 py-1 text-[10px] font-black uppercase tracking-widest text-emerald-300 bg-emerald-500/20 border border-emerald-500/30 rounded-full w-fit mb-3 block select-none backdrop-blur-md">
-                    {activeOffers[activeOfferIdx].discount_percent}% OFF
-                  </span>
-                  <h4 className="text-white font-extrabold text-lg leading-snug line-clamp-2 select-none drop-shadow-md">
-                    {activeOffers[activeOfferIdx].title}
-                  </h4>
-                  <p className="text-white/70 text-xs mt-1.5 leading-relaxed line-clamp-2 select-none">
-                    {activeOffers[activeOfferIdx].description}
-                  </p>
+          {/* Carousel Outer Wrapper - Glassmorphic / Vignette Card */}
+          <div className="relative w-full h-[210px] rounded-[2.5rem] overflow-hidden border border-white/10 bg-black/40 shadow-2xl flex group">
+            <AnimatePresence initial={false} custom={direction} mode="wait">
+              <motion.div
+                key={activeOfferIdx}
+                custom={direction}
+                variants={slideVariants}
+                initial="enter"
+                animate="center"
+                exit="exit"
+                className="absolute inset-0 w-full h-full flex"
+              >
+                {/* Full Bleed Background Image & Overlay */}
+                <div className="absolute inset-0 w-full h-full pointer-events-none select-none">
+                  <Image
+                    src={activeOffers[activeOfferIdx].image_url || 'https://images.unsplash.com/photo-1544787210-2211d4d98342?q=80&w=800'}
+                    alt={activeOffers[activeOfferIdx].title}
+                    fill
+                    className="object-cover transition-transform duration-1000 scale-100 group-hover:scale-[1.03]"
+                    priority
+                  />
+                  <div className="absolute inset-0 bg-gradient-to-r from-black/95 via-black/80 to-black/35" />
                 </div>
-              </div>
 
-              {/* Voucher Top/Bottom Notches and Separator Line */}
-              <div className="absolute -top-3 right-[32%] w-6 h-6 rounded-full bg-background z-20 shadow-[inset_0_-2px_4px_rgba(0,0,0,0.15)] pointer-events-none" />
-              <div className="absolute -bottom-3 right-[32%] w-6 h-6 rounded-full bg-background z-20 shadow-[inset_0_2px_4px_rgba(0,0,0,0.15)] pointer-events-none" />
-              <div className="absolute top-3 bottom-3 right-[32%] w-[1px] border-r-2 border-dashed border-white/20 z-20 pointer-events-none" />
-
-              {/* Right Column: Stub / Promo code (32% width) */}
-              <div className="w-[32%] relative z-10 h-full flex items-center justify-center pr-4">
-                {activeOffers[activeOfferIdx].code ? (
-                  <div className="flex flex-col items-center justify-center text-center">
-                    <span className="text-[9px] uppercase font-black tracking-widest text-white/50 mb-1.5 select-none font-bold">PROMO CODE</span>
-                    <span className="text-xs font-black tracking-widest text-emerald-300 bg-emerald-500/20 px-3 py-2 rounded-2xl border border-emerald-500/35 backdrop-blur-md shadow-inner select-all max-w-full truncate">
-                      {activeOffers[activeOfferIdx].code}
+                {/* Left Column: Details (68% width) */}
+                <div className="w-[68%] p-6 flex flex-col justify-between relative z-10 text-left h-full">
+                  <div>
+                    <span className="px-3 py-1 text-[10px] font-black uppercase tracking-widest text-emerald-300 bg-emerald-500/20 border border-emerald-500/30 rounded-full w-fit mb-3 block select-none backdrop-blur-md">
+                      {activeOffers[activeOfferIdx].discount_percent}% OFF
                     </span>
+                    <h4 className="text-white font-extrabold text-lg leading-snug line-clamp-2 select-none drop-shadow-md">
+                      {activeOffers[activeOfferIdx].title}
+                    </h4>
+                    <p className="text-white/70 text-xs mt-1.5 leading-relaxed line-clamp-2 select-none">
+                      {activeOffers[activeOfferIdx].description}
+                    </p>
                   </div>
-                ) : (
-                  <div className="flex flex-col items-center justify-center text-center">
-                    <span className="text-[10px] font-black tracking-widest text-emerald-400 select-none bg-emerald-500/10 px-3 py-1.5 rounded-full border border-emerald-500/20 backdrop-blur-sm">
-                      AUTO-APPLIED
-                    </span>
-                  </div>
-                )}
-              </div>
-            </motion.div>
-          </AnimatePresence>
-        </div>
+                </div>
 
-        {/* Carousel Pagination Dots */}
-        <div className="flex justify-center gap-2 mt-4">
-          {activeOffers.map((_, i) => (
-            <button
-              key={i}
-              onClick={() => {
-                setDirection(i > activeOfferIdx ? 1 : -1);
-                setActiveOfferIdx(i);
-              }}
-              className={cn(
-                "h-2.5 rounded-full transition-all duration-300",
-                i === activeOfferIdx
-                  ? "bg-primary w-6"
-                  : "bg-muted-foreground/30 hover:bg-muted-foreground/50 w-2.5"
-              )}
-              aria-label={`Go to slide ${i + 1}`}
-            />
-          ))}
+                {/* Voucher Top/Bottom Notches and Separator Line */}
+                <div className="absolute -top-3 right-[32%] w-6 h-6 rounded-full bg-background z-20 shadow-[inset_0_-2px_4px_rgba(0,0,0,0.15)] pointer-events-none" />
+                <div className="absolute -bottom-3 right-[32%] w-6 h-6 rounded-full bg-background z-20 shadow-[inset_0_2px_4px_rgba(0,0,0,0.15)] pointer-events-none" />
+                <div className="absolute top-3 bottom-3 right-[32%] w-[1px] border-r-2 border-dashed border-white/20 z-20 pointer-events-none" />
+
+                {/* Right Column: Stub / Promo code (32% width) */}
+                <div className="w-[32%] relative z-10 h-full flex items-center justify-center pr-4">
+                  {activeOffers[activeOfferIdx].code ? (
+                    <div className="flex flex-col items-center justify-center text-center">
+                      <span className="text-[9px] uppercase font-black tracking-widest text-white/50 mb-1.5 select-none font-bold">PROMO CODE</span>
+                      <span className="text-xs font-black tracking-widest text-emerald-300 bg-emerald-500/20 px-3 py-2 rounded-2xl border border-emerald-500/35 backdrop-blur-md shadow-inner select-all max-w-full truncate">
+                        {activeOffers[activeOfferIdx].code}
+                      </span>
+                    </div>
+                  ) : (
+                    <div className="flex flex-col items-center justify-center text-center">
+                      <span className="text-[10px] font-black tracking-widest text-emerald-400 select-none bg-emerald-500/10 px-3 py-1.5 rounded-full border border-emerald-500/20 backdrop-blur-sm">
+                        AUTO-APPLIED
+                      </span>
+                    </div>
+                  )}
+                </div>
+              </motion.div>
+            </AnimatePresence>
+          </div>
+
+          {/* Carousel Pagination Dots */}
+          {activeOffers.length > 1 && (
+            <div className="flex justify-center gap-2 mt-4">
+              {activeOffers.map((_, i) => (
+                <button
+                  key={i}
+                  onClick={() => {
+                    setDirection(i > activeOfferIdx ? 1 : -1);
+                    setActiveOfferIdx(i);
+                  }}
+                  className={cn(
+                    "h-2.5 rounded-full transition-all duration-300",
+                    i === activeOfferIdx
+                      ? "bg-primary w-6"
+                      : "bg-muted-foreground/30 hover:bg-muted-foreground/50 w-2.5"
+                  )}
+                  aria-label={`Go to slide ${i + 1}`}
+                />
+              ))}
+            </div>
+          )}
         </div>
-      </div>
+      )}
 
       {/* Trending Items */}
       <div className="mt-8">
@@ -777,7 +746,7 @@ export default function DashboardView({ onViewCart }: { onViewCart?: () => void 
                         }}
                         className="w-full bg-primary text-white font-bold text-xs py-2 rounded-xl flex items-center justify-center gap-1 active:scale-95 transition-transform"
                       >
-                        <Plus className="w-3.5 h-3.5" /> Add to Cart
+                        <Plus className="w-3.5 h-3.5" /> Add to Plate
                       </button>
                     </div>
                   </div>

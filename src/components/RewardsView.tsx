@@ -4,6 +4,7 @@ import React, { useEffect, useState, useCallback } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
 import { supabase } from '@/lib/supabase';
 import { useAuth } from '@/context/AuthContext';
+import { useAlert } from '@/context/AlertContext';
 import { 
   Gift, 
   Lock, 
@@ -19,7 +20,8 @@ import {
   Calendar, 
   Sparkles,
   Check,
-  X
+  X,
+  RotateCcw
 } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import { Reward } from '@/types';
@@ -29,7 +31,7 @@ interface RewardClaim {
   id: string;
   user_id: string;
   reward_id: string;
-  status: 'pending' | 'approved' | 'completed' | 'rejected';
+  status: 'pending' | 'approved' | 'completed' | 'rejected' | 'refunded' | 'refund';
   created_at: string;
   rewards: Reward;
 }
@@ -62,6 +64,7 @@ const QRCode = ({ value }: { value: string }) => {
 
 export default function RewardsView({ onBack }: RewardsViewProps) {
   const { user, refreshUser } = useAuth();
+  const { showAlert } = useAlert();
   
   // Tabs & Searching
   const [activeTab, setActiveTab] = useState<'catalog' | 'history'>('catalog');
@@ -73,6 +76,11 @@ export default function RewardsView({ onBack }: RewardsViewProps) {
   
   // Dropdown & Expand State
   const [expandedClaimId, setExpandedClaimId] = useState<string | null>(null);
+
+  // Tier Thresholds: Static 300 and 800 milestones
+  const maxRewardPoints = rewards.length > 0 ? Math.max(...rewards.map(r => r.required_points)) : 1000;
+  const bronzeThreshold = 300; // Gold Milestone
+  const goldThreshold = 800;   // Platinum Milestone
 
 
 
@@ -94,13 +102,50 @@ export default function RewardsView({ onBack }: RewardsViewProps) {
   }, [user]);
 
   useEffect(() => {
-    const timer = setTimeout(() => {
-      fetchData();
-    }, 0);
-    return () => clearTimeout(timer);
-  }, [fetchData]);
+    fetchData();
 
-  // Dynamic Tier Helper
+    // Subscribe to reward_claims postgres changes
+    const claimsChannel = supabase
+      .channel('rewards_claims_realtime')
+      .on('postgres_changes', { event: '*', schema: 'public', table: 'reward_claims' }, () => {
+        fetchData();
+        refreshUser();
+      })
+      .subscribe();
+
+    // Subscribe to rewards postgres changes
+    const rewardsChannel = supabase
+      .channel('rewards_realtime')
+      .on('postgres_changes', { event: '*', schema: 'public', table: 'rewards' }, () => {
+        fetchData();
+      })
+      .subscribe();
+
+    // Subscribe to users table to sync points automatically in real-time
+    let usersChannel: any;
+    if (user?.id) {
+      usersChannel = supabase
+        .channel('users_points_realtime')
+        .on(
+          'postgres_changes',
+          { event: 'UPDATE', schema: 'public', table: 'users', filter: `id=eq.${user.id}` },
+          () => {
+            refreshUser();
+          }
+        )
+        .subscribe();
+    }
+
+    return () => {
+      supabase.removeChannel(claimsChannel);
+      supabase.removeChannel(rewardsChannel);
+      if (usersChannel) {
+        supabase.removeChannel(usersChannel);
+      }
+    };
+  }, [fetchData, refreshUser, user?.id]);
+
+  // Reward Tier Details based on required points
   const getRewardTierDetails = (points: number) => {
     if (points <= 250) {
       return {
@@ -147,29 +192,45 @@ export default function RewardsView({ onBack }: RewardsViewProps) {
 
       if (userError) throw userError;
 
-      alert(`"${reward.title}" has been successfully claimed! Check your Claims History for details.`);
+      showAlert(
+        'Claim Placed Successfully!',
+        `"${reward.title}" has been successfully claimed! Check your Claims History for details.`,
+        'reward'
+      );
       refreshUser();
       fetchData(); // Refresh history
       setActiveTab('history'); // Switch automatically to show their active pending claim
     } catch (error) {
       console.error('Claim error:', error);
-      alert('Failed to claim reward.');
+      showAlert('Claim Failed', 'Failed to claim reward. Please try again.', 'error');
     }
   };
 
 
 
-  // Math mapping for dynamic progress bar (Piecewise calculations for milestones)
+  // Math mapping for dynamic progress bar (Adaptive piecewise algorithm to prevent marker congestion)
   const userPoints = user?.points || 0;
+  const progressMax = Math.max(maxRewardPoints, 1000);
+
+  // Dynamically calculate Gold and Platinum marker percentages to avoid visual congestion
+  const interpolationFactor = Math.min(1, (progressMax - 1000) / 2000);
+  const goldMarkerPercent = 40 - 15 * interpolationFactor; // Dynamically slides between 40% and 25%
+  const platinumMarkerPercent = 85 - 25 * interpolationFactor; // Dynamically slides between 85% and 60%
+
   const getProgressPercentage = (pts: number) => {
+    if (pts <= 0) return 0;
     if (pts <= 300) {
-      return (pts / 300) * 40; // 0-300 maps to 0%-40%
-    } else if (pts <= 800) {
-      return 40 + ((pts - 300) / 500) * 45; // 300-800 maps to 40%-85%
-    } else {
-      return 85 + (Math.min(200, pts - 800) / 200) * 15; // 800+ maps to 85%-100%
+      return (pts / 300) * goldMarkerPercent;
     }
+    if (pts <= 800) {
+      return goldMarkerPercent + ((pts - 300) / 500) * (platinumMarkerPercent - goldMarkerPercent);
+    }
+    const extraRange = progressMax - 800;
+    if (extraRange <= 0) return platinumMarkerPercent;
+    const progressOverGold = pts - 800;
+    return platinumMarkerPercent + (Math.min(extraRange, progressOverGold) / extraRange) * (100 - platinumMarkerPercent);
   };
+
   const percentage = getProgressPercentage(userPoints);
 
   // Encouragement helper
@@ -235,7 +296,7 @@ export default function RewardsView({ onBack }: RewardsViewProps) {
           </div>
           
           <div className="px-4 py-1.5 bg-[#f59e0b]/10 border border-[#f59e0b]/20 text-[#f59e0b] rounded-full text-xs font-black uppercase tracking-wider">
-            {userPoints >= 800 ? 'Platinum Tier' : userPoints >= 251 ? 'Gold Tier' : 'Bronze Tier'}
+            {userPoints >= goldThreshold ? 'Platinum Tier' : userPoints >= bronzeThreshold ? 'Gold Tier' : 'Bronze Tier'}
           </div>
         </div>
 
@@ -258,27 +319,39 @@ export default function RewardsView({ onBack }: RewardsViewProps) {
             
             <div 
               className={cn(
-                "absolute left-[40%] -translate-x-1/2 w-4.5 h-4.5 rounded-full border-2 border-white flex items-center justify-center shadow-md transition-colors duration-500",
-                userPoints >= 300 ? "bg-[#f59e0b]" : "bg-neutral-300"
+                "absolute -translate-x-1/2 w-4.5 h-4.5 rounded-full border-2 border-white flex items-center justify-center shadow-md transition-all duration-500",
+                userPoints >= bronzeThreshold ? "bg-[#f59e0b]" : "bg-neutral-300"
               )}
+              style={{ left: `${goldMarkerPercent}%` }}
             >
-              {userPoints >= 300 ? <Check className="w-2.5 h-2.5 text-white stroke-[3]" /> : <div className="w-1.5 h-1.5 rounded-full bg-white" />}
+              {userPoints >= bronzeThreshold ? <Check className="w-2.5 h-2.5 text-white stroke-[3]" /> : <div className="w-1.5 h-1.5 rounded-full bg-white" />}
             </div>
 
             <div 
               className={cn(
-                "absolute left-[85%] -translate-x-1/2 w-4.5 h-4.5 rounded-full border-2 border-white flex items-center justify-center shadow-md transition-colors duration-500",
-                userPoints >= 800 ? "bg-slate-400" : "bg-neutral-300"
+                "absolute -translate-x-1/2 w-4.5 h-4.5 rounded-full border-2 border-white flex items-center justify-center shadow-md transition-all duration-500",
+                userPoints >= goldThreshold ? "bg-slate-400" : "bg-neutral-300"
               )}
+              style={{ left: `${platinumMarkerPercent}%` }}
             >
-              {userPoints >= 800 ? <Check className="w-2.5 h-2.5 text-white stroke-[3]" /> : <div className="w-1.5 h-1.5 rounded-full bg-white" />}
+              {userPoints >= goldThreshold ? <Check className="w-2.5 h-2.5 text-white stroke-[3]" /> : <div className="w-1.5 h-1.5 rounded-full bg-white" />}
             </div>
           </div>
 
           <div className="flex relative w-full text-[9px] font-black text-muted-foreground select-none h-6 mt-1">
             <span className="absolute left-0 font-bold text-amber-700">BRONZE</span>
-            <span className={cn("absolute left-[40%] -translate-x-1/2", userPoints >= 300 ? "text-amber-600 font-extrabold" : "text-muted-foreground")}>GOLD (300)</span>
-            <span className={cn("absolute left-[85%] -translate-x-1/2", userPoints >= 800 ? "text-slate-600 font-extrabold" : "text-muted-foreground")}>PLATINUM (800)</span>
+            <span 
+              className={cn("absolute -translate-x-1/2 whitespace-nowrap transition-all duration-500", userPoints >= bronzeThreshold ? "text-amber-600 font-extrabold" : "text-muted-foreground")}
+              style={{ left: `${goldMarkerPercent}%` }}
+            >
+              GOLD ({bronzeThreshold})
+            </span>
+            <span 
+              className={cn("absolute -translate-x-1/2 whitespace-nowrap transition-all duration-500", userPoints >= goldThreshold ? "text-slate-600 font-extrabold" : "text-muted-foreground")}
+              style={{ left: `${platinumMarkerPercent}%` }}
+            >
+              PLATINUM ({goldThreshold})
+            </span>
           </div>
 
           <p className="text-[11px] text-muted-foreground font-medium flex items-center gap-1.5 pt-1.5">
@@ -442,6 +515,7 @@ export default function RewardsView({ onBack }: RewardsViewProps) {
                 claims.map((claim) => {
                   const isPending = claim.status === 'pending';
                   const isApproved = claim.status === 'approved' || claim.status === 'completed';
+                  const isRefunded = claim.status === 'refunded' || claim.status === 'refund';
                   const isRejected = claim.status === 'rejected';
 
                   return (
@@ -452,6 +526,7 @@ export default function RewardsView({ onBack }: RewardsViewProps) {
                         "w-full rounded-3xl p-5 border premium-shadow transition-all duration-300 flex flex-col gap-4 cursor-pointer overflow-hidden select-none",
                         isPending ? "bg-gradient-to-br from-amber-500/10 to-transparent border-amber-500/35 hover:border-amber-500/50" :
                         isApproved ? "bg-gradient-to-br from-emerald-500/5 to-transparent border-emerald-500/20 hover:border-emerald-500/35" :
+                        isRefunded ? "bg-gradient-to-br from-blue-500/10 to-transparent border-blue-500/25 hover:border-blue-500/40" :
                         "bg-gradient-to-br from-red-500/5 to-transparent border-red-500/25 hover:border-red-500/40"
                       )}
                       onClick={() => setExpandedClaimId(expandedClaimId === claim.id ? null : claim.id)}
@@ -463,10 +538,12 @@ export default function RewardsView({ onBack }: RewardsViewProps) {
                             "w-10 h-10 rounded-xl flex items-center justify-center",
                             isPending ? "bg-amber-500/15 text-amber-600" :
                             isApproved ? "bg-emerald-500/15 text-emerald-600" :
+                            isRefunded ? "bg-blue-500/15 text-blue-600" :
                             "bg-red-500/15 text-red-600"
                           )}>
                             {isPending ? <Clock className="w-5 h-5" /> :
                              isApproved ? <CheckCircle2 className="w-5 h-5" /> :
+                             isRefunded ? <RotateCcw className="w-5 h-5" /> :
                              <XCircle className="w-5 h-5" />}
                           </div>
                           <div>
@@ -483,9 +560,10 @@ export default function RewardsView({ onBack }: RewardsViewProps) {
                             "text-sm font-bold flex items-center gap-1",
                             isPending ? "text-amber-600" :
                             isApproved ? "text-emerald-600" :
+                            isRefunded ? "text-blue-600" :
                             "text-red-600"
                           )}>
-                            {isRejected ? '+' : '-'}{claim.rewards.required_points}
+                            {isRejected || isRefunded ? '+' : '-'}{claim.rewards.required_points}
                             <span className="text-[10px] uppercase font-bold text-muted-foreground">pts</span>
                           </span>
                           
@@ -494,10 +572,11 @@ export default function RewardsView({ onBack }: RewardsViewProps) {
                             "text-[9px] font-extrabold uppercase px-2.5 py-0.5 rounded-full border mt-1.5 flex items-center gap-1 w-fit",
                             isPending ? "bg-amber-500/10 text-amber-500 border-amber-500/20 animate-pulse" :
                             isApproved ? "bg-emerald-500/10 text-emerald-500 border-emerald-500/20" :
+                            isRefunded ? "bg-blue-500/10 text-blue-500 border-blue-500/20" :
                             "bg-red-500/10 text-red-500 border-red-500/20"
                           )}>
                             {isPending && <span className="w-1.5 h-1.5 bg-amber-500 rounded-full" />}
-                            {isPending ? 'Pending' : isApproved ? 'Redeemed' : 'Rejected'}
+                            {isPending ? 'Pending' : isApproved ? 'Redeemed' : isRefunded ? 'Refunded' : 'Rejected'}
                           </span>
                         </div>
                       </div>
@@ -538,6 +617,19 @@ export default function RewardsView({ onBack }: RewardsViewProps) {
                                 </p>
                                 <p className="text-xs text-muted-foreground mt-2.5 leading-relaxed font-medium">
                                   Redeemed successfully! Show this receipt to shop keepers if you need to trace your points history.
+                                </p>
+                              </div>
+                            ) : isRefunded ? (
+                              <div className="text-center px-4 w-full">
+                                <div className="w-11 h-11 rounded-full bg-blue-500/10 text-blue-500 flex items-center justify-center mx-auto mb-2 border border-blue-500/20">
+                                  <RotateCcw className="w-5 h-5 stroke-[2.5]" />
+                                </div>
+                                <p className="text-[9px] font-bold text-muted-foreground uppercase tracking-widest">Refund Status</p>
+                                <p className="text-xs text-blue-500 font-bold mt-0.5 select-all">
+                                  Refunded &bull; Points Returned
+                                </p>
+                                <p className="text-xs text-muted-foreground mt-2.5 leading-relaxed font-medium">
+                                  This claim request has been refunded. The full points balance has been returned back to your wallet.
                                 </p>
                               </div>
                             ) : (

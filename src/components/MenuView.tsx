@@ -46,7 +46,7 @@ export default function MenuView({ onViewCart }: MenuViewProps) {
   const filteredProducts = products.filter(p => {
     const matchesCategory = selectedCategory === 'All' || p.category === selectedCategory;
     const matchesSearch = p.name.toLowerCase().includes(searchQuery.toLowerCase());
-    return matchesCategory && matchesSearch;
+    return matchesCategory && matchesSearch && !p.archived;
   });
 
   const getProductQuantity = (id: string) => {
@@ -125,7 +125,10 @@ export default function MenuView({ onViewCart }: MenuViewProps) {
                   animate={{ opacity: 1, y: 0 }}
                   exit={{ opacity: 0, scale: 0.9 }}
                   transition={{ delay: idx * 0.05 }}
-                  className="flex items-center gap-4 bg-white p-3 rounded-2xl border border-border premium-shadow"
+                  className={cn(
+                    "flex items-center gap-4 bg-white p-3 rounded-2xl border border-border premium-shadow transition-opacity",
+                    !product.available && "opacity-60"
+                  )}
                 >
                   <div className="w-24 h-24 bg-surface rounded-xl overflow-hidden flex-shrink-0 relative">
                     <Image
@@ -134,6 +137,11 @@ export default function MenuView({ onViewCart }: MenuViewProps) {
                       fill
                       className="object-cover"
                     />
+                    {!product.available && (
+                      <div className="absolute inset-0 bg-black/45 backdrop-blur-[1px] flex items-center justify-center">
+                        <span className="text-[10px] text-white font-extrabold uppercase tracking-wider px-2 py-0.5 bg-red-600 rounded-md">Sold Out</span>
+                      </div>
+                    )}
                   </div>
                   <div className="flex-grow">
                     <h3 className="font-bold text-lg">{product.name}</h3>
@@ -148,7 +156,11 @@ export default function MenuView({ onViewCart }: MenuViewProps) {
                     <p className="text-primary font-bold mt-1 text-lg">₹{product.price}</p>
                   </div>
                   <div className="flex flex-col items-center gap-2">
-                    {qty > 0 ? (
+                    {!product.available ? (
+                      <span className="text-[9px] text-red-500 font-extrabold uppercase px-2 py-1 bg-red-50 rounded-lg border border-red-100/50">
+                        Out of Stock
+                      </span>
+                    ) : qty > 0 ? (
                       <div className="flex flex-col items-center bg-surface rounded-full p-1 border border-border">
                         <button
                           onClick={() => updateQuantity(product.id, 1)}
@@ -201,7 +213,7 @@ export default function MenuView({ onViewCart }: MenuViewProps) {
               onClick={onViewCart}
               className="bg-primary text-white font-bold py-2 px-6 rounded-xl text-sm"
             >
-              View Cart
+              View Plate
             </button>
           </div>
         </motion.div>

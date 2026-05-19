@@ -3,6 +3,7 @@ import { Inter } from "next/font/google";
 import "./globals.css";
 import { AuthProvider } from "@/context/AuthContext";
 import { CartProvider } from "@/context/CartContext";
+import { AlertProvider } from "@/context/AlertContext";
 
 const inter = Inter({ subsets: ["latin"] });
 
@@ -34,9 +35,11 @@ export default function RootLayout({
     <html lang="en" suppressHydrationWarning>
       <body className={inter.className} suppressHydrationWarning>
         <AuthProvider>
-          <CartProvider>
-            {children}
-          </CartProvider>
+          <AlertProvider>
+            <CartProvider>
+              {children}
+            </CartProvider>
+          </AlertProvider>
         </AuthProvider>
       </body>
     </html>
